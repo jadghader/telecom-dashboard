@@ -3,8 +3,9 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - "release/*"  # Runs on push to any "release/*" branch
-  workflow_dispatch:  # Allows manual execution from GitHub UI
+      - main
+      - release  # Ensure "release" branch is included
+  workflow_dispatch:  # ✅ Required for manual trigger
 
 jobs:
   deploy:
