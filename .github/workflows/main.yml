@@ -3,7 +3,7 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - "release/**" # Matches all branches that start with "release/"
+      - "release/*" 
 
 jobs:
   deploy:
