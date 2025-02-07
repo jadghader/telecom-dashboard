@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "telecom-dashboard",
+    "production": "telecom-dashboard"
+  },
+  "targets": {},
+  "etags": {}
+}
