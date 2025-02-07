@@ -3,7 +3,8 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - "release/*" 
+      - "release/*"  # Runs on push to any "release/*" branch
+  workflow_dispatch:  # Allows manual execution from GitHub UI
 
 jobs:
   deploy:
