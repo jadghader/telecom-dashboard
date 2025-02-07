@@ -17,6 +17,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm' # Caches node_modules to speed up builds
+
+      - name: Install Dependencies
+        run: npm ci # Ensures a clean, repeatable install
+
+      - name: Build Project
+        run: npm run build # Change this if your build command is different
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
