@@ -12,7 +12,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import useThemeDetect from "./hooks/useThemeDetect";
 
 const App: React.FC = () => {
-  const { theme, isDarkMode } = useThemeDetect(); // Use both theme and isDarkMode
+  const { isDarkMode } = useThemeDetect(); // Use both theme and isDarkMode
   const { isLoading: authLoading } = useAuth();
 
   if (authLoading) return <Loader />;

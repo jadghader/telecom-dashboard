@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { MenuItem, Select, FormControl, useMediaQuery } from "@mui/material";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
@@ -100,9 +100,9 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7)
   );
-  const [isSelectOpen, setIsSelectOpen] = useState(false); // Track if the Select dropdown is open
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     const snapshot = await getDocs(collection(db, "transactions"));
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const filteredData = data.filter((transaction: any) => {
@@ -111,33 +111,33 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
       return transactionMonth === selectedMonth;
     });
     setTransactions(filteredData);
-  };
+  }, [selectedMonth]); // ✅ Wrapped in useCallback to avoid unnecessary re-renders
 
-  const fetchExchangeRate = async () => {
+  const fetchExchangeRate = useCallback(async () => {
     const settingsRef = doc(db, "settings", "exchange_rate");
     const settingsDoc = await getDoc(settingsRef);
     if (settingsDoc.exists()) {
       setExchangeRate(settingsDoc.data().usd_to_lbp);
     }
-  };
+  }, []); // No dependencies since it doesn't rely on external state
 
-  // Disable scrolling when the Select dropdown is open
+  // Handle disabling scrolling when Select dropdown is open
   useEffect(() => {
     if (isSelectOpen) {
-      document.body.style.overflow = "hidden"; // Disable scrolling
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "auto"; // Enable scrolling
+      document.body.style.overflow = "auto";
     }
 
     return () => {
-      document.body.style.overflow = "auto"; // Clean up when the component is unmounted
+      document.body.style.overflow = "auto";
     };
   }, [isSelectOpen]);
 
   useEffect(() => {
     fetchTransactions();
     fetchExchangeRate();
-  }, [selectedMonth]);
+  }, [fetchTransactions, fetchExchangeRate]); // ✅ Now properly listed in dependencies
 
   return (
     <>
