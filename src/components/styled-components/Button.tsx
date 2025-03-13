@@ -12,15 +12,17 @@ interface ButtonProps {
   width?: string; // Custom width
   height?: string; // Custom height
   margin?: string; // Custom margin
+  disabled?: boolean; // Disabled state
+  sx?: React.CSSProperties; // Extra styling
 }
 
 const ButtonContainer = styled.button<ButtonProps>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: ${({ width }) => width || "auto"}; // Custom width if provided
-  height: ${({ height }) => height || "auto"}; // Custom height if provided
-  margin: ${({ margin }) => margin || "0"}; // Custom margin if provided
+  width: ${({ width }) => width || "auto"};
+  height: ${({ height }) => height || "auto"};
+  margin: ${({ margin }) => margin || "0"};
   padding: ${({ padding, size }) => {
     if (padding) return padding;
     switch (size) {
@@ -48,14 +50,16 @@ const ButtonContainer = styled.button<ButtonProps>`
   font-weight: 600;
   border: none;
   border-radius: ${({ borderRadius }) => borderRadius || "8px"};
-  cursor: pointer;
-  background-color: ${({ theme }) => theme.primary};
-  color: #FFFFFF;
+  cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
+  background-color: ${({ theme, disabled }) =>
+    disabled ? "gray" : theme.primary};
+  color: ${({ disabled }) => (disabled ? "#ccc" : "#FFFFFF")};
   transition: background-color 0.3s ease, transform 0.2s ease;
 
   &:hover {
-    background-color: ${({ theme }) => theme.accent};
-    transform: scale(1.01);
+    background-color: ${({ theme, disabled }) =>
+      disabled ? "gray" : theme.accent};
+    transform: ${({ disabled }) => (disabled ? "none" : "scale(1.01)")};
   }
 
   &:focus {
@@ -78,10 +82,15 @@ const Button: React.FC<ButtonProps> = ({
   width,
   height,
   margin,
+  disabled = false,
+  sx = {},
 }) => {
+  // Use a no-op function if disabled
+  const handleClick = disabled ? () => {} : onClick;
+
   return (
     <ButtonContainer
-      onClick={onClick}
+      onClick={handleClick} // Prevent click when disabled
       size={size}
       fontSize={fontSize}
       padding={padding}
@@ -89,6 +98,8 @@ const Button: React.FC<ButtonProps> = ({
       width={width}
       height={height}
       margin={margin}
+      disabled={disabled}
+      style={{ ...sx }} // Apply extra styling via sx prop
     >
       {icon && icon}
       {children}
