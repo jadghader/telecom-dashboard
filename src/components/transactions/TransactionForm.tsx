@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Snackbar } from "@mui/material";
 import { db } from "../../firebase";
 import {
   collection,
@@ -30,7 +31,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const { theme } = useThemeDetect();
   const isMobile = useMediaQuery(`(max-width: 600px)`);
-
+  const [isAdding, setIsAdding] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -85,7 +88,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         id: doc.id,
         ...doc.data(),
       }));
-      setItems(itemList);
+      const sortedItems = itemList.sort((a, b) => {
+        const priceA = (a as any).source_price || 0;
+        const priceB = (b as any).source_price || 0;
+        return priceA - priceB;
+      });
+
+      setItems(sortedItems);
     };
 
     fetchItems();
@@ -118,7 +127,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdding) return; // Prevent multiple clicks
+
+    setIsAdding(true); // Disable button
     const revenue = sellPrice - sourcePrice;
+
     try {
       await addDoc(collection(db, "transactions"), {
         customerName,
@@ -130,7 +143,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         revenue,
         date: Timestamp.fromDate(new Date(transactionDate)),
       });
+
       fetchTransactions();
+      setSnackbarMessage("Transaction added successfully ✅");
+      setSnackbarOpen(true);
+
+      // Reset form fields
       setCustomerName("");
       setSelectedProvider("");
       setSelectedCategory("");
@@ -142,11 +160,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       setTransactionDate(
         DateTime.now().setZone("UTC+2").toFormat("yyyy-LL-dd'T'HH:mm")
       );
+
+      // Show checkmark animation for 1 sec before enabling button
+      setTimeout(() => {
+        setIsAdding(false);
+      }, 1000);
     } catch (error) {
       console.error("Error adding transaction:", error);
+      setSnackbarMessage("Error adding transaction ❌");
+      setSnackbarOpen(true);
+      setIsAdding(false);
     }
   };
 
+  // Close Snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
+  const isFormValid = () => {
+    return (
+      customerName !== "" &&
+      selectedProvider !== "" &&
+      selectedCategory !== "" &&
+      selectedItem !== "" &&
+      sellPrice > 0 &&
+      sourcePrice > 0 &&
+      priceType !== "" &&
+      transactionDate !== ""
+    );
+  };
   return (
     <Box
       sx={{
@@ -375,19 +417,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           }}
         />
 
-        {/* Submit Button */}
         <Button
           onClick={handleSubmit}
+          disabled={isAdding || !isFormValid()} // Disable if form is invalid or already adding
           size="large"
           padding="12px"
           fontSize="1rem"
           borderRadius="8px"
           width="100%"
           margin="10px 0px 0px 0px"
+          sx={{
+            backgroundColor:
+              isAdding || !isFormValid() ? theme.disabled : theme.primary, // Change background color when adding or form is invalid
+            cursor: isAdding || !isFormValid() ? "not-allowed" : "pointer", // Change cursor style when adding or form is invalid
+          }}
         >
           Add Transaction
         </Button>
       </form>
+      {/* Snackbar Notification */}
+      {snackbarOpen && (
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          message={snackbarMessage}
+        />
+      )}
     </Box>
   );
 };
