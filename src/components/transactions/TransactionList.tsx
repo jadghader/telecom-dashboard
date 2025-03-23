@@ -11,13 +11,9 @@ import {
   Box,
   IconButton,
   TableSortLabel,
-  TextField,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CloseIcon from "@mui/icons-material/Close";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useTheme } from "styled-components";
 import { toZonedTime, format as tzFormat } from "date-fns-tz";
@@ -44,14 +40,13 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
   const [currentTransactions, setCurrentTransactions] =
     useState<Transaction[]>(transactions);
   const [order, setOrder] = useState<"asc" | "desc">("asc");
-  const [orderBy, setOrderBy] = useState<keyof Transaction | null>(null);
-  const [editingTransactionId, setEditingTransactionId] = useState<
-    string | null
-  >(null);
-  const [editedFields, setEditedFields] = useState<Partial<Transaction>>({});
+  const [orderBy, setOrderBy] = useState<keyof Transaction | "date">("date");
 
   useEffect(() => {
-    setCurrentTransactions(transactions);
+    const sortedTransactions = [...transactions].sort(
+      (a, b) => b.date.seconds - a.date.seconds
+    );
+    setCurrentTransactions(sortedTransactions);
   }, [transactions]);
 
   const handleDelete = async (id: string) => {
@@ -70,55 +65,15 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
     setOrderBy(property);
     const sortedData = [...currentTransactions].sort((a, b) => {
       if (property === "date") {
-        return isAscending ? a.date - b.date : b.date - a.date;
+        return isAscending
+          ? a.date.seconds - b.date.seconds
+          : b.date.seconds - a.date.seconds;
       }
       if (a[property] < b[property]) return isAscending ? 1 : -1;
       if (a[property] > b[property]) return isAscending ? -1 : 1;
       return 0;
     });
     setCurrentTransactions(sortedData);
-  };
-
-  const handleEditClick = (transactionId: string) => {
-    setEditingTransactionId(transactionId);
-    const transactionToEdit = currentTransactions.find(
-      (transaction) => transaction.id === transactionId
-    );
-    if (transactionToEdit) {
-      setEditedFields({
-        customerName: transactionToEdit.customerName,
-        provider: transactionToEdit.provider,
-        category: transactionToEdit.category,
-        item: transactionToEdit.item,
-        sellPrice: transactionToEdit.sellPrice,
-      });
-    }
-  };
-
-  const handleFieldChange = (field: string, value: any) => {
-    setEditedFields((prevState) => ({
-      ...prevState,
-      [field]: value,
-    }));
-  };
-
-  const handleSaveEdit = async (transactionId: string) => {
-    try {
-      const transactionDoc = doc(db, "transactions", transactionId);
-      await updateDoc(transactionDoc, editedFields);
-      setCurrentTransactions((prev) =>
-        prev.map((t) =>
-          t.id === transactionId ? { ...t, ...editedFields } : t
-        )
-      );
-      setEditingTransactionId(null);
-    } catch (error) {
-      console.error("Error saving transaction update: ", error);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingTransactionId(null);
   };
 
   const formatDate = (timestamp: any) => {
@@ -158,6 +113,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
                 { label: "Provider", key: "provider" },
                 { label: "Category", key: "category" },
                 { label: "Item", key: "item" },
+                { label: "Source Price", key: "sourcePrice" },
                 { label: "Sell Price", key: "sellPrice" },
                 { label: "Revenue", key: "revenue" },
                 { label: "Date", key: "date" },
@@ -190,101 +146,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
                     },
                   }}
                 >
-                  {/* Render table cells with edit functionality */}
                   <TableCell sx={{ color: theme.text }}>
-                    {editingTransactionId === t.id ? (
-                      <TextField
-                        value={editedFields.customerName}
-                        onChange={(e) =>
-                          handleFieldChange("customerName", e.target.value)
-                        }
-                        sx={{
-                          borderColor: theme.editable,
-                          borderRadius: 1,
-                          "& .MuiInputBase-root": {
-                            color: theme.editableText,
-                          },
-                        }}
-                      />
-                    ) : (
-                      t.customerName
-                    )}
+                    {t.customerName}
+                  </TableCell>
+                  <TableCell sx={{ color: theme.text }}>{t.provider}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>{t.category}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>{t.item}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>
+                    {t.sourcePrice.toFixed(2)}
                   </TableCell>
                   <TableCell sx={{ color: theme.text }}>
-                    {editingTransactionId === t.id ? (
-                      <TextField
-                        value={editedFields.provider}
-                        onChange={(e) =>
-                          handleFieldChange("provider", e.target.value)
-                        }
-                        sx={{
-                          borderColor: theme.editable,
-                          borderRadius: 1,
-                          "& .MuiInputBase-root": {
-                            color: theme.editableText,
-                          },
-                        }}
-                      />
-                    ) : (
-                      t.provider
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ color: theme.text }}>
-                    {editingTransactionId === t.id ? (
-                      <TextField
-                        value={editedFields.category}
-                        onChange={(e) =>
-                          handleFieldChange("category", e.target.value)
-                        }
-                        sx={{
-                          borderColor: theme.editable,
-                          borderRadius: 1,
-                          "& .MuiInputBase-root": {
-                            color: theme.editableText,
-                          },
-                        }}
-                      />
-                    ) : (
-                      t.category
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ color: theme.text }}>
-                    {editingTransactionId === t.id ? (
-                      <TextField
-                        value={editedFields.item}
-                        onChange={(e) =>
-                          handleFieldChange("item", e.target.value)
-                        }
-                        sx={{
-                          borderColor: theme.editable,
-                          borderRadius: 1,
-                          "& .MuiInputBase-root": {
-                            color: theme.editableText,
-                          },
-                        }}
-                      />
-                    ) : (
-                      t.item
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ color: theme.text }}>
-                    {editingTransactionId === t.id ? (
-                      <TextField
-                        value={editedFields.sellPrice}
-                        onChange={(e) =>
-                          handleFieldChange("sellPrice", e.target.value)
-                        }
-                        sx={{
-                          borderColor: theme.editable,
-                          borderRadius: 1,
-                          "& .MuiInputBase-root": {
-                            color: theme.editableText,
-                          },
-                        }}
-                      />
-                    ) : (
-                      t.sellPrice.toFixed(2)
-                    )}
+                    {t.sellPrice.toFixed(2)}
                   </TableCell>
                   <TableCell sx={{ color: theme.success, fontWeight: 600 }}>
                     {t.revenue.toFixed(2)}
@@ -293,30 +165,6 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
                     {formatDate(t.date)}
                   </TableCell>
                   <TableCell>
-                    {editingTransactionId === t.id ? (
-                      <>
-                        <IconButton
-                          onClick={() => handleSaveEdit(t.id)}
-                          color="success"
-                        >
-                          <CheckCircleIcon />
-                        </IconButton>
-                        <IconButton onClick={handleCancelEdit} color="error">
-                          <CloseIcon
-                            sx={{
-                              color: "red",
-                            }}
-                          />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <IconButton
-                        onClick={() => handleEditClick(t.id)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    )}
                     <IconButton
                       onClick={() => handleDelete(t.id)}
                       color="error"
