@@ -164,7 +164,6 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
           </SummaryAndFormContainer>
 
           <FormControl fullWidth>
-            {/* Use the custom styled InputLabel */}
             <StyledInputLabel theme={{ text: isDarkMode ? "#fff" : "#000" }}>
               Month
             </StyledInputLabel>

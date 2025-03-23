@@ -202,6 +202,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         overflowX: "hidden", // Prevent horizontal scrolling
       }}
     >
+      {/* Snackbar Notification */}
+      {snackbarOpen && (
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          message={snackbarMessage}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }} // Position Snackbar at the top-right
+        />
+      )}
       <form onSubmit={handleSubmit}>
         <TextField
           label="Customer Name"
@@ -232,7 +242,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             },
           }}
         />
-
         {/* Provider Selector */}
         <FormControl fullWidth size="small" required margin="normal">
           <InputLabel sx={{ color: theme.text }}>Provider</InputLabel>
@@ -263,7 +272,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             ))}
           </Select>
         </FormControl>
-
         {/* Category Selector */}
         <FormControl fullWidth size="small" required margin="normal">
           <InputLabel sx={{ color: theme.text }}>Category</InputLabel>
@@ -294,7 +302,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             ))}
           </Select>
         </FormControl>
-
         {/* Item Selector */}
         <FormControl fullWidth size="small" required margin="normal">
           <InputLabel sx={{ color: theme.text }}>Item</InputLabel>
@@ -325,7 +332,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             ))}
           </Select>
         </FormControl>
-
         {/* Transaction Date */}
         <TextField
           label="Transaction Date"
@@ -357,7 +363,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             },
           }}
         />
-
         {/* Price Type Selector */}
         <FormControl fullWidth size="small" required margin="normal">
           <InputLabel sx={{ color: theme.text }}>Price Type</InputLabel>
@@ -385,7 +390,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             <MenuItem value="wholesale">Wholesale</MenuItem>
           </Select>
         </FormControl>
-
+        <TextField
+          label="Source Price"
+          type="number"
+          value={sourcePrice}
+          onChange={(e) => setSourcePrice(Number(e.target.value))} // Handle the change for source price
+          required
+          size="small"
+          margin="normal"
+          fullWidth
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              backgroundColor: theme.inputBackground,
+              color: theme.inputText,
+              borderRadius: "8px",
+              "& fieldset": {
+                borderColor: theme.borderColor,
+              },
+              "&:hover fieldset": {
+                borderColor: theme.primary,
+              },
+              "&.Mui-focused fieldset": {
+                borderColor: theme.primary,
+              },
+            },
+            "& .MuiInputLabel-root": {
+              color: theme.text,
+            },
+          }}
+        />
         {/* Sell Price */}
         <TextField
           label="Sell Price"
@@ -416,7 +449,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             },
           }}
         />
-
         <Button
           onClick={handleSubmit}
           disabled={isAdding || !isFormValid()} // Disable if form is invalid or already adding
@@ -435,15 +467,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           Add Transaction
         </Button>
       </form>
-      {/* Snackbar Notification */}
-      {snackbarOpen && (
-        <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={3000}
-          onClose={handleCloseSnackbar}
-          message={snackbarMessage}
-        />
-      )}
     </Box>
   );
 };
