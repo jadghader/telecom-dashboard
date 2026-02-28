@@ -6,17 +6,16 @@ import React, {
   ReactNode,
 } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 interface AuthContextType {
   user: User | null;
-  isAdmin: boolean;
   isLoading: boolean;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  isAdmin: false,
   isLoading: true,
   logout: () => {},
 });
@@ -27,21 +26,45 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isEmailAllowlisted = async (email: string): Promise<boolean> => {
+    const whitelistSnap = await getDoc(doc(db, "auth_whitelist", "config"));
+    if (!whitelistSnap.exists()) {
+      return false;
+    }
+    const data = whitelistSnap.data();
+    const allowedEmails: string[] = Array.isArray(data.allowedEmails)
+      ? data.allowedEmails.map((entry: string) => entry.toLowerCase())
+      : [];
+    return allowedEmails.includes(email.trim().toLowerCase());
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-
-      if (currentUser) {
-        const token = await currentUser.getIdTokenResult();
-        const adminStatus = token.claims?.role === "admin"; // Correct check
-        setIsAdmin(adminStatus);
-
-      } else {
-        setIsAdmin(false);
+      if (!currentUser?.email) {
+        setUser(currentUser);
+        setIsLoading(false);
+        return;
       }
+
+      try {
+        const allowed = await isEmailAllowlisted(currentUser.email);
+        if (!allowed) {
+          await auth.signOut();
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Whitelist check failed:", error);
+        await auth.signOut();
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
       setIsLoading(false);
     });
     return unsubscribe;
@@ -50,12 +73,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     await auth.signOut();
     setUser(null);
-    setIsAdmin(false);
-
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isLoading, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,76 +1,190 @@
-import React, { useState, useEffect } from "react";
-import { Snackbar } from "@mui/material";
-import { db } from "../../firebase";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  getDoc,
-  Timestamp,
-} from "firebase/firestore";
-import { DateTime } from "luxon";
-import {
-  TextField,
+  Alert,
+  Autocomplete,
+  Box,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
-  Box,
+  Snackbar,
+  TextField,
+  Typography,
   useMediaQuery,
 } from "@mui/material";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { DateTime } from "luxon";
+import { db } from "../../firebase";
 import useThemeDetect from "../../hooks/useThemeDetect";
 import Button from "../styled-components/Button";
 
+const LAST_INPUT_KEY = "telecom:last-transaction-input";
+const NEW_PRODUCT_VALUE = "__new_product__";
+
 interface TransactionFormProps {
-  fetchTransactions: () => void;
+  fetchTransactions: () => Promise<void>;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({
-  fetchTransactions,
-}) => {
+interface ItemDoc {
+  id: string;
+  name?: string;
+  providerId?: string;
+  categoryId?: string;
+  prices?: {
+    source?: number;
+    retail?: number;
+    wholesale?: number;
+  };
+  isActive?: boolean;
+}
+
+interface LastInput {
+  customerName: string;
+  selectedProvider: string;
+  selectedCategory: string;
+  selectedItem: string;
+  newProductName: string;
+  priceType: "retail" | "wholesale";
+  sourcePrice: number;
+  sellPrice: number;
+  quantity: number;
+}
+
+const toCustomerId = (name: string) =>
+  name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+const toMonthKey = (dateValue: string) => {
+  const jsDate = new Date(dateValue);
+  if (Number.isNaN(jsDate.getTime())) {
+    return new Date().toISOString().slice(0, 7);
+  }
+  return jsDate.toISOString().slice(0, 7);
+};
+
+const computeTotals = (entries: any[]) =>
+  entries.reduce(
+    (acc, current) => ({
+      quantity: acc.quantity + Number(current.quantity || 0),
+      totalCost:
+        acc.totalCost + Number(current.sourcePrice || 0) * Number(current.quantity || 0),
+      totalSales:
+        acc.totalSales + Number(current.sellPrice || 0) * Number(current.quantity || 0),
+      totalProfit: acc.totalProfit + Number(current.revenue || 0),
+    }),
+    { quantity: 0, totalCost: 0, totalSales: 0, totalProfit: 0 }
+  );
+
+const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) => {
   const { theme } = useThemeDetect();
-  const isMobile = useMediaQuery(`(max-width: 600px)`);
+  const isMobile = useMediaQuery("(max-width: 600px)");
   const [isAdding, setIsAdding] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success"
+  );
+
   const [customerName, setCustomerName] = useState("");
+  const [customers, setCustomers] = useState<string[]>([]);
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
+  const [newProductName, setNewProductName] = useState("");
   const [sellPrice, setSellPrice] = useState(0);
   const [sourcePrice, setSourcePrice] = useState(0);
-  const [priceType, setPriceType] = useState("retail");
+  const [retailPrice, setRetailPrice] = useState(0);
+  const [wholesalePrice, setWholesalePrice] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [priceType, setPriceType] = useState<"retail" | "wholesale">("retail");
   const [transactionDate, setTransactionDate] = useState<string>(
     DateTime.now().setZone("UTC+2").toFormat("yyyy-LL-dd'T'HH:mm")
   );
 
   const [providers, setProviders] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ItemDoc[]>([]);
+  const [exchangeRate, setExchangeRate] = useState<number>(1);
+  const fieldSx = {
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: theme.inputBackground,
+      borderRadius: "10px",
+      color: theme.inputText,
+      "& fieldset": {
+        borderColor: theme.borderColor,
+      },
+      "&:hover fieldset": {
+        borderColor: theme.primary,
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: theme.primary,
+      },
+    },
+    "& .MuiInputLabel-root": {
+      color: theme.textMuted,
+    },
+  };
+
+  const totalProfitLbp = useMemo(
+    () => (sellPrice - sourcePrice) * Number(quantity || 0),
+    [sellPrice, sourcePrice, quantity]
+  );
+  const totalProfitUsd = useMemo(
+    () => totalProfitLbp / (exchangeRate > 0 ? exchangeRate : 1),
+    [totalProfitLbp, exchangeRate]
+  );
+
+  const loadCustomers = async () => {
+    const customersSnapshot = await getDocs(collection(db, "customers"));
+    const names = customersSnapshot.docs
+      .map((customerDoc) => String(customerDoc.data().displayName || ""))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    setCustomers(names);
+  };
 
   useEffect(() => {
-    const fetchProviders = async () => {
-      const providersSnapshot = await getDocs(collection(db, "settings"));
-      providersSnapshot.forEach((doc) => {
-        if (doc.id === "providers") {
-          setProviders(doc.data().name || []);
+    const fetchSettingsAndCustomers = async () => {
+      try {
+        const [providersSnapshot, categoriesSnapshot, settingsSnapshot] = await Promise.all([
+          getDocs(collection(db, "catalog_providers")),
+          getDocs(collection(db, "catalog_categories")),
+          getDoc(doc(db, "settings", "system")),
+        ]);
+        setProviders(
+          providersSnapshot.docs
+            .filter((providerDoc) => providerDoc.data().isActive !== false)
+            .map((providerDoc) => providerDoc.id)
+        );
+        setCategories(
+          categoriesSnapshot.docs
+            .filter((categoryDoc) => categoryDoc.data().isActive !== false)
+            .map((categoryDoc) => categoryDoc.id)
+        );
+        if (settingsSnapshot.exists()) {
+          setExchangeRate(Number(settingsSnapshot.data().exchangeRate || 1));
         }
-      });
+        await loadCustomers();
+      } catch (error: any) {
+        console.error("Failed to load catalog/settings:", error);
+        showSnackbar(
+          error?.code === "permission-denied"
+            ? "Your account is not allowed to access dashboard data."
+            : "Failed to load settings data.",
+          "error"
+        );
+      }
     };
-    fetchProviders();
-  }, []);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const categoriesSnapshot = await getDocs(collection(db, "settings"));
-      categoriesSnapshot.forEach((doc) => {
-        if (doc.id === "categories") {
-          setCategories(doc.data().name || []);
-        }
-      });
-    };
-    fetchCategories();
+    fetchSettingsAndCustomers();
   }, []);
 
   useEffect(() => {
@@ -82,389 +196,476 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const fetchItems = async () => {
       const itemsSnapshot = await getDocs(
-        collection(db, "providers", selectedProvider, selectedCategory)
+        query(
+          collection(db, "catalog_products"),
+          where("providerId", "==", selectedProvider),
+          where("categoryId", "==", selectedCategory)
+        )
       );
-      const itemList = itemsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      const sortedItems = itemList.sort((a, b) => {
-        const priceA = (a as any).source_price || 0;
-        const priceB = (b as any).source_price || 0;
-        return priceA - priceB;
-      });
-
-      setItems(sortedItems);
+      const itemList = itemsSnapshot.docs
+        .map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() }))
+        .filter((item: any) => item.isActive !== false)
+        .sort(
+          (a: any, b: any) => Number(a?.prices?.source || 0) - Number(b?.prices?.source || 0)
+        );
+      setItems(itemList);
     };
 
     fetchItems();
   }, [selectedProvider, selectedCategory]);
 
   useEffect(() => {
-    if (!selectedItem || !selectedProvider || !selectedCategory) return;
+    if (
+      !selectedItem ||
+      selectedItem === NEW_PRODUCT_VALUE ||
+      !selectedProvider ||
+      !selectedCategory
+    ) {
+      return;
+    }
 
     const fetchItemDetails = async () => {
-      const itemRef = doc(
-        db,
-        "providers",
-        selectedProvider,
-        selectedCategory,
-        selectedItem
-      );
+      const itemRef = doc(db, "catalog_products", selectedItem);
       const itemDoc = await getDoc(itemRef);
-      if (itemDoc.exists()) {
-        const data = itemDoc.data();
-        let fetchedSourcePrice = data.source_price;
-        let fetchedSellPrice =
-          priceType === "retail" ? data.retail_price : data.wholesale_price;
-        setSourcePrice(fetchedSourcePrice);
-        setSellPrice(fetchedSellPrice);
+      if (!itemDoc.exists()) {
+        return;
       }
+      const itemData = itemDoc.data();
+      const fetchedSourcePrice = Number(itemData.prices?.source || 0);
+      const fetchedRetailPrice = Number(itemData.prices?.retail || 0);
+      const fetchedWholesalePrice = Number(itemData.prices?.wholesale || 0);
+      setSourcePrice(fetchedSourcePrice);
+      setRetailPrice(fetchedRetailPrice);
+      setWholesalePrice(fetchedWholesalePrice);
+      setSellPrice(priceType === "retail" ? fetchedRetailPrice : fetchedWholesalePrice);
     };
 
     fetchItemDetails();
   }, [selectedItem, priceType, selectedProvider, selectedCategory]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isAdding) return; // Prevent multiple clicks
+  const showSnackbar = (message: string, severity: "success" | "error") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
 
-    setIsAdding(true); // Disable button
-    const revenue = sellPrice - sourcePrice;
+  const handleApplyLastInput = () => {
+    const raw = localStorage.getItem(LAST_INPUT_KEY);
+    if (!raw) {
+      showSnackbar("No saved input found yet.", "error");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as LastInput;
+      setCustomerName(parsed.customerName || "");
+      setSelectedProvider(parsed.selectedProvider || "");
+      setSelectedCategory(parsed.selectedCategory || "");
+      setSelectedItem(parsed.selectedItem || "");
+      setNewProductName(parsed.newProductName || "");
+      setPriceType(parsed.priceType || "retail");
+      setSourcePrice(Number(parsed.sourcePrice || 0));
+      setSellPrice(Number(parsed.sellPrice || 0));
+      setQuantity(Math.max(1, Number(parsed.quantity || 1)));
+      showSnackbar("Last input reapplied.", "success");
+    } catch {
+      showSnackbar("Saved last input is invalid.", "error");
+    }
+  };
+
+  const resetForm = () => {
+    setCustomerName("");
+    setSelectedProvider("");
+    setSelectedCategory("");
+    setItems([]);
+    setSelectedItem("");
+    setNewProductName("");
+    setSellPrice(0);
+    setSourcePrice(0);
+    setRetailPrice(0);
+    setWholesalePrice(0);
+    setPriceType("retail");
+    setQuantity(1);
+    setTransactionDate(DateTime.now().setZone("UTC+2").toFormat("yyyy-LL-dd'T'HH:mm"));
+  };
+
+  const isFormValid = () => {
+    const itemName =
+      selectedItem === NEW_PRODUCT_VALUE ? newProductName.trim() : selectedItem.trim();
+
+    return (
+      customerName.trim() !== "" &&
+      selectedProvider !== "" &&
+      selectedCategory !== "" &&
+      itemName !== "" &&
+      sellPrice > 0 &&
+      sourcePrice >= 0 &&
+      quantity > 0 &&
+      transactionDate !== ""
+    );
+  };
+
+  const handleSubmit = async (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    if (isAdding || !isFormValid()) {
+      return;
+    }
+
+    setIsAdding(true);
+    const trimmedCustomerName = customerName.trim();
+    const customerId = toCustomerId(trimmedCustomerName);
+    const monthKey = toMonthKey(transactionDate);
+    const itemName =
+      selectedItem === NEW_PRODUCT_VALUE ? newProductName.trim() : selectedItem.trim();
+    const quantityValue = Math.max(1, Number(quantity || 1));
+    const unitProfitLbp = Number(sellPrice) - Number(sourcePrice);
+    const revenueLbp = unitProfitLbp * quantityValue;
+    const rate = exchangeRate > 0 ? exchangeRate : 1;
+    const revenueUsd = revenueLbp / rate;
+    const dateMs = new Date(transactionDate).getTime();
+    const entryId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    const entry = {
+      entryId,
+      customerName: trimmedCustomerName,
+      customerId,
+      provider: selectedProvider,
+      category: selectedCategory,
+      item: itemName,
+      priceType,
+      quantity: quantityValue,
+      sourcePrice: Number(sourcePrice),
+      sellPrice: Number(sellPrice),
+      revenue: revenueLbp,
+      revenueUsd,
+      unitProfit: unitProfitLbp,
+      unitProfitUsd: unitProfitLbp / rate,
+      exchangeRate: rate,
+      dateMs,
+      createdAtMs: Date.now(),
+    };
 
     try {
-      await addDoc(collection(db, "transactions"), {
-        customerName,
-        provider: selectedProvider,
-        category: selectedCategory,
-        item: selectedItem,
-        sourcePrice,
-        sellPrice,
-        revenue,
-        date: Timestamp.fromDate(new Date(transactionDate)),
-      });
+      if (selectedItem === NEW_PRODUCT_VALUE) {
+        const productId = toCustomerId(`${selectedProvider}-${selectedCategory}-${itemName}`);
+        await setDoc(
+          doc(db, "catalog_products", productId),
+          {
+            name: itemName,
+            providerId: selectedProvider,
+            categoryId: selectedCategory,
+            prices: {
+              source: Number(sourcePrice),
+              retail: Number(retailPrice || sellPrice),
+              wholesale: Number(wholesalePrice || sellPrice),
+            },
+            isActive: true,
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
 
-      fetchTransactions();
-      setSnackbarMessage("Transaction added successfully ✅");
-      setSnackbarOpen(true);
-
-      // Reset form fields
-      setCustomerName("");
-      setSelectedProvider("");
-      setSelectedCategory("");
-      setItems([]);
-      setSelectedItem("");
-      setSellPrice(0);
-      setSourcePrice(0);
-      setPriceType("");
-      setTransactionDate(
-        DateTime.now().setZone("UTC+2").toFormat("yyyy-LL-dd'T'HH:mm")
+      await setDoc(
+        doc(db, "customers", customerId),
+        {
+          displayName: trimmedCustomerName,
+          normalizedName: trimmedCustomerName.toLowerCase(),
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
       );
 
-      // Show checkmark animation for 1 sec before enabling button
-      setTimeout(() => {
-        setIsAdding(false);
-      }, 1000);
+      const monthRef = doc(db, "customers", customerId, "months", monthKey);
+      const monthSnap = await getDoc(monthRef);
+      const existingEntries = monthSnap.exists()
+        ? Array.isArray(monthSnap.data().entries)
+          ? monthSnap.data().entries
+          : []
+        : [];
+      const mergedEntries = [...existingEntries, entry];
+      const totals = computeTotals(mergedEntries);
+
+      if (monthSnap.exists()) {
+        await updateDoc(monthRef, {
+          entries: mergedEntries,
+          totals,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await setDoc(monthRef, {
+          customerId,
+          customerName: trimmedCustomerName,
+          monthKey,
+          entries: mergedEntries,
+          totals,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      localStorage.setItem(
+        LAST_INPUT_KEY,
+        JSON.stringify({
+          customerName: trimmedCustomerName,
+          selectedProvider,
+          selectedCategory,
+          selectedItem,
+          newProductName,
+          priceType,
+          sourcePrice: Number(sourcePrice),
+          sellPrice: Number(sellPrice),
+          quantity: quantityValue,
+        } as LastInput)
+      );
+
+      await loadCustomers();
+      await fetchTransactions();
+      showSnackbar("Transaction saved successfully.", "success");
+      resetForm();
     } catch (error) {
       console.error("Error adding transaction:", error);
-      setSnackbarMessage("Error adding transaction ❌");
-      setSnackbarOpen(true);
+      showSnackbar("Failed to add transaction.", "error");
+    } finally {
       setIsAdding(false);
     }
   };
 
-  // Close Snackbar
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-  };
-  const isFormValid = () => {
-    return (
-      customerName !== "" &&
-      selectedProvider !== "" &&
-      selectedCategory !== "" &&
-      selectedItem !== "" &&
-      sellPrice > 0 &&
-      sourcePrice > 0 &&
-      priceType !== "" &&
-      transactionDate !== ""
-    );
-  };
   return (
     <Box
       sx={{
-        padding: "2rem",
-        backgroundColor: theme.cardBackground,
-        borderRadius: "12px",
-        maxWidth: isMobile ? "100%" : "650px",
-        margin: "auto",
-        boxShadow: `0px 6px 12px ${theme.shadow}`,
+        padding: isMobile ? "1rem" : "1.3rem",
+        background: `linear-gradient(145deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
+        border: `1px solid ${theme.borderColor}`,
+        borderRadius: "16px",
+        boxShadow: `0px 12px 26px ${theme.shadow}`,
         height: "100%",
-        overflowX: "hidden", // Prevent horizontal scrolling
       }}
     >
-      {/* Snackbar Notification */}
-      {snackbarOpen && (
-        <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={3000}
-          onClose={handleCloseSnackbar}
-          message={snackbarMessage}
-          anchorOrigin={{ vertical: "top", horizontal: "right" }} // Position Snackbar at the top-right
-        />
-      )}
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Customer Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          required
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3500}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert severity={snackbarSeverity} onClose={() => setSnackbarOpen(false)}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography sx={{ color: theme.text, fontWeight: 700, fontSize: "1.08rem" }}>
+          Sales Entry
+        </Typography>
+        <Button
+          onClick={handleApplyLastInput}
           size="small"
-          margin="normal"
-          variant="outlined"
-          fullWidth
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              borderRadius: "8px",
-              "& fieldset": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover fieldset": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: theme.primary,
-              },
-            },
-            "& .MuiInputLabel-root": {
-              color: theme.text,
-            },
-          }}
+          padding="8px 10px"
+          fontSize="0.8rem"
+          borderRadius="8px"
+          margin="0"
+        >
+          Re-apply Last Input
+        </Button>
+      </Box>
+
+      <form onSubmit={handleSubmit}>
+        <Autocomplete
+          freeSolo
+          options={customers}
+          value={customerName}
+          onInputChange={(_, value) => setCustomerName(value)}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Customer"
+              required
+              size="small"
+              margin="normal"
+              fullWidth
+              sx={fieldSx}
+            />
+          )}
         />
-        {/* Provider Selector */}
-        <FormControl fullWidth size="small" required margin="normal">
-          <InputLabel sx={{ color: theme.text }}>Provider</InputLabel>
+
+        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+          <InputLabel>Provider</InputLabel>
           <Select
             value={selectedProvider}
             onChange={(e) => setSelectedProvider(e.target.value as string)}
             label="Provider"
-            sx={{
-              backgroundColor: theme.inputBackground,
-              width: "100%", // Set consistent width
-              color: theme.inputText,
-              borderRadius: "8px",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-            }}
           >
-            {providers.map((prov) => (
-              <MenuItem key={prov} value={prov}>
-                {prov}
+            {providers.map((provider) => (
+              <MenuItem key={provider} value={provider}>
+                {provider}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        {/* Category Selector */}
-        <FormControl fullWidth size="small" required margin="normal">
-          <InputLabel sx={{ color: theme.text }}>Category</InputLabel>
+
+        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+          <InputLabel>Category</InputLabel>
           <Select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as string)}
             label="Category"
-            sx={{
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              width: "100%", // Set consistent width
-              borderRadius: "8px",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-            }}
           >
-            {categories.map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
+            {categories.map((category) => (
+              <MenuItem key={category} value={category}>
+                {category}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        {/* Item Selector */}
-        <FormControl fullWidth size="small" required margin="normal">
-          <InputLabel sx={{ color: theme.text }}>Item</InputLabel>
+
+        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+          <InputLabel>Product</InputLabel>
           <Select
             value={selectedItem}
             onChange={(e) => setSelectedItem(e.target.value as string)}
-            label="Item"
-            sx={{
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              borderRadius: "8px",
-              width: "100%", // Set consistent width
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-            }}
+            label="Product"
           >
             {items.map((item) => (
               <MenuItem key={item.id} value={item.id}>
-                {item.id}
+                {item.name || item.id}
               </MenuItem>
             ))}
+            <MenuItem value={NEW_PRODUCT_VALUE}>+ Add New Product</MenuItem>
           </Select>
         </FormControl>
-        {/* Transaction Date */}
+
+        {selectedItem === NEW_PRODUCT_VALUE && (
+          <>
+            <TextField
+              label="New Product Name"
+              value={newProductName}
+              onChange={(e) => setNewProductName(e.target.value)}
+              required
+              size="small"
+              margin="normal"
+              fullWidth
+              sx={fieldSx}
+            />
+            <TextField
+              label="Retail Price"
+              type="number"
+              value={retailPrice}
+              onChange={(e) => setRetailPrice(Number(e.target.value))}
+              size="small"
+              margin="normal"
+              fullWidth
+              sx={fieldSx}
+            />
+            <TextField
+              label="Wholesale Price"
+              type="number"
+              value={wholesalePrice}
+              onChange={(e) => setWholesalePrice(Number(e.target.value))}
+              size="small"
+              margin="normal"
+              fullWidth
+              sx={fieldSx}
+            />
+          </>
+        )}
+
         <TextField
           label="Transaction Date"
           type="datetime-local"
           value={transactionDate}
           onChange={(e) => setTransactionDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
           required
           size="small"
           margin="normal"
-          InputLabelProps={{ shrink: true }}
           fullWidth
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              borderRadius: "8px",
-              "& fieldset": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover fieldset": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: theme.primary,
-              },
-            },
-            "& .MuiInputLabel-root": {
-              color: theme.text,
-            },
-          }}
+          sx={fieldSx}
         />
-        {/* Price Type Selector */}
-        <FormControl fullWidth size="small" required margin="normal">
-          <InputLabel sx={{ color: theme.text }}>Price Type</InputLabel>
+
+        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+          <InputLabel>Price Type</InputLabel>
           <Select
             value={priceType}
-            onChange={(e) => setPriceType(e.target.value as string)}
+            onChange={(e) => setPriceType(e.target.value as "retail" | "wholesale")}
             label="Price Type"
-            sx={{
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              width: "100%", // Set consistent width
-              borderRadius: "8px",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.primary,
-              },
-            }}
           >
             <MenuItem value="retail">Retail</MenuItem>
             <MenuItem value="wholesale">Wholesale</MenuItem>
           </Select>
         </FormControl>
-        <TextField
-          label="Source Price"
-          type="number"
-          value={sourcePrice}
-          onChange={(e) => setSourcePrice(Number(e.target.value))} // Handle the change for source price
-          required
-          size="small"
-          margin="normal"
-          fullWidth
+
+        <Box
           sx={{
-            "& .MuiOutlinedInput-root": {
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              borderRadius: "8px",
-              "& fieldset": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover fieldset": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: theme.primary,
-              },
-            },
-            "& .MuiInputLabel-root": {
-              color: theme.text,
-            },
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+            gap: 1.25,
+            mt: 0.6,
           }}
-        />
-        {/* Sell Price */}
-        <TextField
-          label="Sell Price"
-          type="number"
-          value={sellPrice}
-          onChange={(e) => setSellPrice(Number(e.target.value))}
-          required
-          size="small"
-          margin="normal"
-          fullWidth
+        >
+          <TextField
+            label="Source Price"
+            type="number"
+            value={sourcePrice}
+            onChange={(e) => setSourcePrice(Number(e.target.value))}
+            required
+            size="small"
+            margin="normal"
+            fullWidth
+            sx={fieldSx}
+          />
+
+          <TextField
+            label="Sell Price"
+            type="number"
+            value={sellPrice}
+            onChange={(e) => setSellPrice(Number(e.target.value))}
+            required
+            size="small"
+            margin="normal"
+            fullWidth
+            sx={fieldSx}
+          />
+
+          <TextField
+            label="Quantity"
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value || 1)))}
+            required
+            size="small"
+            margin="normal"
+            fullWidth
+            inputProps={{ min: 1 }}
+            sx={fieldSx}
+          />
+        </Box>
+
+        <Typography
           sx={{
-            "& .MuiOutlinedInput-root": {
-              backgroundColor: theme.inputBackground,
-              color: theme.inputText,
-              borderRadius: "8px",
-              "& fieldset": {
-                borderColor: theme.borderColor,
-              },
-              "&:hover fieldset": {
-                borderColor: theme.primary,
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: theme.primary,
-              },
-            },
-            "& .MuiInputLabel-root": {
-              color: theme.text,
-            },
+            color: theme.primary,
+            marginTop: 1.2,
+            fontWeight: 700,
+            background: theme.secondary,
+            border: `1px solid ${theme.borderColor}`,
+            borderRadius: "10px",
+            padding: "10px 12px",
           }}
-        />
+        >
+          Estimated Profit: {totalProfitLbp.toFixed(0)} LBP ({totalProfitUsd.toFixed(2)} USD)
+        </Typography>
+
         <Button
-          onClick={handleSubmit}
-          disabled={isAdding || !isFormValid()} // Disable if form is invalid or already adding
+          onClick={(e) => handleSubmit(e)}
+          disabled={isAdding || !isFormValid()}
           size="large"
           padding="12px"
           fontSize="1rem"
           borderRadius="8px"
           width="100%"
-          margin="10px 0px 0px 0px"
-          sx={{
-            backgroundColor:
-              isAdding || !isFormValid() ? theme.disabled : theme.primary, // Change background color when adding or form is invalid
-            cursor: isAdding || !isFormValid() ? "not-allowed" : "pointer", // Change cursor style when adding or form is invalid
-          }}
+          margin="12px 0 0 0"
         >
-          Add Transaction
+          {isAdding ? "Saving..." : "Save Sale"}
         </Button>
       </form>
     </Box>

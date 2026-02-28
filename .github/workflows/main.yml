@@ -18,19 +18,32 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm' # Caches node_modules to speed up builds
 
       - name: Install Dependencies
         run: npm ci # Ensures a clean, repeatable install
 
+      - name: Create .env for build
+        env:
+          REACT_APP_FIREBASE_CONFIG_B64: ${{ secrets.REACT_APP_FIREBASE_CONFIG_B64 }}
+        run: |
+          cat > .env <<EOF
+          REACT_APP_FIREBASE_CONFIG_B64=$REACT_APP_FIREBASE_CONFIG_B64
+          EOF
+
       - name: Build Project
-        run: npm run build # Change this if your build command is different
+        run: npm run build
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Deploy to Firebase
+      - name: Authenticate with Google Cloud
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: firebase deploy --only hosting --token "$FIREBASE_TOKEN"
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > $HOME/gcloud.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json" >> $GITHUB_ENV
+
+      - name: Deploy to Firebase
+        run: firebase deploy --only hosting,firestore:rules

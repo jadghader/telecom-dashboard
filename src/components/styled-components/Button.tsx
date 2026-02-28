@@ -16,16 +16,26 @@ interface ButtonProps {
   sx?: React.CSSProperties; // Extra styling
 }
 
-const ButtonContainer = styled.button<ButtonProps>`
+interface ButtonStyleProps {
+  $size?: "small" | "medium" | "large";
+  $fontSize?: string;
+  $padding?: string;
+  $borderRadius?: string;
+  $width?: string;
+  $height?: string;
+  $margin?: string;
+}
+
+const ButtonContainer = styled.button<ButtonStyleProps>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: ${({ width }) => width || "auto"};
-  height: ${({ height }) => height || "auto"};
-  margin: ${({ margin }) => margin || "0"};
-  padding: ${({ padding, size }) => {
-    if (padding) return padding;
-    switch (size) {
+  width: ${({ $width }) => $width || "auto"};
+  height: ${({ $height }) => $height || "auto"};
+  margin: ${({ $margin }) => $margin || "0"};
+  padding: ${({ $padding, $size }) => {
+    if ($padding) return $padding;
+    switch ($size) {
       case "small":
         return "8px 16px";
       case "large":
@@ -35,9 +45,9 @@ const ButtonContainer = styled.button<ButtonProps>`
         return "12px 24px";
     }
   }};
-  font-size: ${({ fontSize, size }) => {
-    if (fontSize) return fontSize;
-    switch (size) {
+  font-size: ${({ $fontSize, $size }) => {
+    if ($fontSize) return $fontSize;
+    switch ($size) {
       case "small":
         return "14px";
       case "large":
@@ -47,18 +57,20 @@ const ButtonContainer = styled.button<ButtonProps>`
         return "16px";
     }
   }};
-  font-weight: 600;
+  font-weight: 700;
   border: none;
-  border-radius: ${({ borderRadius }) => borderRadius || "8px"};
+  border-radius: ${({ $borderRadius }) => $borderRadius || "10px"};
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
   background-color: ${({ theme, disabled }) =>
-    disabled ? "gray" : theme.primary};
-  color: ${({ disabled }) => (disabled ? "#ccc" : "#FFFFFF")};
-  transition: background-color 0.3s ease, transform 0.2s ease;
+    disabled ? theme.disabled : theme.primary};
+  color: ${({ disabled }) => (disabled ? "#e5e7eb" : "#FFFFFF")};
+  box-shadow: ${({ theme, disabled }) =>
+    disabled ? "none" : `0 8px 18px ${theme.shadow}`};
+  transition: background-color 0.25s ease, transform 0.2s ease;
 
   &:hover {
     background-color: ${({ theme, disabled }) =>
-      disabled ? "gray" : theme.accent};
+      disabled ? theme.disabled : theme.primaryHover};
     transform: ${({ disabled }) => (disabled ? "none" : "scale(1.01)")};
   }
 
@@ -91,13 +103,13 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <ButtonContainer
       onClick={handleClick} // Prevent click when disabled
-      size={size}
-      fontSize={fontSize}
-      padding={padding}
-      borderRadius={borderRadius}
-      width={width}
-      height={height}
-      margin={margin}
+      $size={size}
+      $fontSize={fontSize}
+      $padding={padding}
+      $borderRadius={borderRadius}
+      $width={width}
+      $height={height}
+      $margin={margin}
       disabled={disabled}
       style={{ ...sx }} // Apply extra styling via sx prop
     >

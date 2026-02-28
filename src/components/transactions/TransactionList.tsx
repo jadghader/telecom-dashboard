@@ -1,89 +1,68 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Box,
+  IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
-  Paper,
-  Box,
-  IconButton,
   TableSortLabel,
+  Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { doc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
 import { useTheme } from "styled-components";
-import { toZonedTime, format as tzFormat } from "date-fns-tz";
-
-interface Transaction {
-  id: string;
-  customerName: string;
-  provider: string;
-  category: string;
-  item: string;
-  sourcePrice: number;
-  sellPrice: number;
-  revenue: number;
-  date: any;
-}
+import { DashboardTransaction } from "../dashboard/Dashboard";
 
 interface TransactionListProps {
-  transactions: Transaction[];
+  transactions: DashboardTransaction[];
+  onDeleteTransaction: (transaction: DashboardTransaction) => Promise<void>;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
+const TransactionList: React.FC<TransactionListProps> = ({
+  transactions,
+  onDeleteTransaction,
+}) => {
   const theme = useTheme();
-
   const [currentTransactions, setCurrentTransactions] =
-    useState<Transaction[]>(transactions);
-  const [order, setOrder] = useState<"asc" | "desc">("asc");
-  const [orderBy, setOrderBy] = useState<keyof Transaction | "date">("date");
+    useState<DashboardTransaction[]>(transactions);
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
+  const [orderBy, setOrderBy] = useState<keyof DashboardTransaction>("dateMs");
 
   useEffect(() => {
-    const sortedTransactions = [...transactions].sort(
-      (a, b) => b.date.seconds - a.date.seconds
-    );
-    setCurrentTransactions(sortedTransactions);
+    const sorted = [...transactions].sort((a, b) => b.dateMs - a.dateMs);
+    setCurrentTransactions(sorted);
   }, [transactions]);
 
-  const handleDelete = async (id: string) => {
-    try {
-      const transactionDoc = doc(db, "transactions", id);
-      await deleteDoc(transactionDoc);
-      setCurrentTransactions(currentTransactions.filter((t) => t.id !== id));
-    } catch (error) {
-      console.error("Error deleting transaction: ", error);
-    }
-  };
-
-  const handleSort = (property: keyof Transaction) => {
-    const isAscending = orderBy === property && order === "asc";
-    setOrder(isAscending ? "desc" : "asc");
+  const handleSort = (property: keyof DashboardTransaction) => {
+    const ascending = orderBy === property && order === "asc";
+    setOrder(ascending ? "desc" : "asc");
     setOrderBy(property);
-    const sortedData = [...currentTransactions].sort((a, b) => {
-      if (property === "date") {
-        return isAscending
-          ? a.date.seconds - b.date.seconds
-          : b.date.seconds - a.date.seconds;
+    const sorted = [...currentTransactions].sort((a, b) => {
+      const aValue = a[property];
+      const bValue = b[property];
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return ascending ? bValue - aValue : aValue - bValue;
       }
-      if (a[property] < b[property]) return isAscending ? 1 : -1;
-      if (a[property] > b[property]) return isAscending ? -1 : 1;
-      return 0;
+      return ascending
+        ? String(bValue).localeCompare(String(aValue))
+        : String(aValue).localeCompare(String(bValue));
     });
-    setCurrentTransactions(sortedData);
+    setCurrentTransactions(sorted);
   };
 
-  const formatDate = (timestamp: any) => {
-    const timeZone = "Asia/Beirut";
-    const date = timestamp?.seconds
-      ? new Date(timestamp.seconds * 1000)
-      : new Date();
-    const zonedDate = toZonedTime(date, timeZone);
-    return tzFormat(zonedDate, "d MMMM yyyy 'at' HH:mm:ss", {
-      timeZone,
+  const formatDate = (dateMs: number) => {
+    if (!dateMs) {
+      return "-";
+    }
+    return new Date(dateMs).toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -91,84 +70,84 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
     <Box sx={{ overflowX: "auto" }}>
       <Typography
         variant="h6"
-        sx={{ marginBottom: 2, fontWeight: 600, color: theme.text }}
+        sx={{ marginBottom: 1.2, fontWeight: 700, color: theme.text, letterSpacing: "-0.01em" }}
       >
         Transaction History
+      </Typography>
+      <Typography sx={{ marginBottom: 2, color: theme.textMuted, fontSize: "0.92rem" }}>
+        Latest customer activity for the selected month.
       </Typography>
 
       <TableContainer
         component={Paper}
         sx={{
-          borderRadius: 3,
-          boxShadow: `0px 4px 8px ${theme.shadow}`,
-          background: theme.cardBackground,
-          overflowX: "auto",
+          borderRadius: "14px",
+          border: `1px solid ${theme.borderColor}`,
+          boxShadow: `0px 12px 24px ${theme.shadow}`,
+          background: `linear-gradient(180deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
         }}
       >
-        <Table>
+        <Table size="small">
           <TableHead>
-            <TableRow sx={{ backgroundColor: theme.primary }}>
+            <TableRow
+              sx={{
+                background: `linear-gradient(90deg, ${theme.primary} 0%, ${theme.accent} 100%)`,
+              }}
+            >
               {[
                 { label: "Customer", key: "customerName" },
                 { label: "Provider", key: "provider" },
                 { label: "Category", key: "category" },
                 { label: "Item", key: "item" },
-                { label: "Source Price", key: "sourcePrice" },
-                { label: "Sell Price", key: "sellPrice" },
-                { label: "Revenue", key: "revenue" },
-                { label: "Date", key: "date" },
+                { label: "Qty", key: "quantity" },
+                { label: "Unit Cost", key: "sourcePrice" },
+                { label: "Unit Sell", key: "sellPrice" },
+                { label: "Profit (LBP)", key: "revenue" },
+                { label: "Date", key: "dateMs" },
               ].map(({ label, key }) => (
-                <TableCell key={key} sx={{ color: "white", fontWeight: 600 }}>
+                <TableCell key={key} sx={{ color: "white", fontWeight: 700, py: 1.2 }}>
                   <TableSortLabel
                     active={orderBy === key}
                     direction={orderBy === key ? order : "asc"}
-                    onClick={() => handleSort(key as keyof Transaction)}
+                    onClick={() => handleSort(key as keyof DashboardTransaction)}
                     sx={{ color: "white" }}
                   >
                     {label}
                   </TableSortLabel>
                 </TableCell>
               ))}
-              <TableCell sx={{ color: "white", fontWeight: 600 }}></TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 700 }} />
             </TableRow>
           </TableHead>
           <TableBody>
             {currentTransactions.length > 0 ? (
-              currentTransactions.map((t) => (
+              currentTransactions.map((transaction) => (
                 <TableRow
-                  key={t.id}
+                  key={transaction.id}
                   sx={{
-                    "&:nth-of-type(even)": {
-                      backgroundColor: theme.secondary,
-                    },
-                    "&:hover": {
-                      backgroundColor: theme.hoverBackground,
-                    },
+                    "&:nth-of-type(even)": { backgroundColor: theme.secondary },
+                    "&:hover": { backgroundColor: theme.hoverBackground, transition: "0.2s" },
                   }}
                 >
-                  <TableCell sx={{ color: theme.text }}>
-                    {t.customerName}
-                  </TableCell>
-                  <TableCell sx={{ color: theme.text }}>{t.provider}</TableCell>
-                  <TableCell sx={{ color: theme.text }}>{t.category}</TableCell>
-                  <TableCell sx={{ color: theme.text }}>{t.item}</TableCell>
-                  <TableCell sx={{ color: theme.text }}>
-                    {t.sourcePrice.toFixed(2)}
+                  <TableCell sx={{ color: theme.text }}>{transaction.customerName}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>{transaction.provider}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>{transaction.category}</TableCell>
+                  <TableCell sx={{ color: theme.text }}>{transaction.item}</TableCell>
+                  <TableCell sx={{ color: theme.text, fontWeight: 600 }}>
+                    {transaction.quantity}
                   </TableCell>
                   <TableCell sx={{ color: theme.text }}>
-                    {t.sellPrice.toFixed(2)}
-                  </TableCell>
-                  <TableCell sx={{ color: theme.success, fontWeight: 600 }}>
-                    {t.revenue.toFixed(2)}
+                    {transaction.sourcePrice.toFixed(2)}
                   </TableCell>
                   <TableCell sx={{ color: theme.text }}>
-                    {formatDate(t.date)}
+                    {transaction.sellPrice.toFixed(2)}
                   </TableCell>
+                  <TableCell sx={{ color: theme.success, fontWeight: 700 }}>
+                    {Math.round(transaction.revenue).toLocaleString()} LBP
+                  </TableCell>
+                  <TableCell sx={{ color: theme.text }}>{formatDate(transaction.dateMs)}</TableCell>
                   <TableCell>
-                    <IconButton
-                      onClick={() => handleDelete(t.id)}
-                      color="error"
-                    >
+                    <IconButton onClick={() => onDeleteTransaction(transaction)} color="error">
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -176,12 +155,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={8}
-                  align="center"
-                  sx={{ color: theme.text }}
-                >
-                  No transactions available
+                <TableCell colSpan={10} align="center" sx={{ color: theme.text }}>
+                  No transactions available for this month.
                 </TableCell>
               </TableRow>
             )}

@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { auth } from "../../firebase";
-import { Snackbar, Alert, Slide, CircularProgress } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import {
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
+import { auth, db } from "../../firebase";
+import {
+  Alert,
+  CircularProgress,
+  Slide,
+  Snackbar,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
 import styled from "styled-components";
-import { Visibility, VisibilityOff } from "@mui/icons-material"; // Import the eye icons
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import GoogleIcon from "@mui/icons-material/Google";
+import { doc, getDoc } from "firebase/firestore";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -12,22 +26,41 @@ const Login: React.FC = () => {
   const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
   const [snackbarType, setSnackbarType] = useState<"success" | "error">(
-    "error"
+    "error",
   );
   const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const { user, isAdmin, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
-  const isValidEmail = (email: string): boolean => {
-    const regex = /^[a-zA-Z0-9._%+-]+@[a-zAZ0-9.-]+\.[a-zA-Z]{2,4}$/;
-    return regex.test(email);
+  const isValidEmail = (emailValue: string): boolean => {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(emailValue);
   };
 
-  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const isEmailAllowed = async (emailToCheck: string): Promise<boolean> => {
+    try {
+      const whitelistRef = doc(db, "auth_whitelist", "config");
+      const whitelistSnap = await getDoc(whitelistRef);
+      if (!whitelistSnap.exists()) {
+        return false;
+      }
+
+      const data = whitelistSnap.data();
+      const allowedEmails: string[] = data.allowedEmails || [];
+      const normalizedEmail = emailToCheck.trim().toLowerCase();
+
+      return allowedEmails.includes(normalizedEmail);
+    } catch (error) {
+      console.error("Failed to read auth whitelist:", error);
+      return false;
+    }
+  };
+
+  const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsEmailLoading(true);
 
-    // Input validation
     if (!isValidEmail(email)) {
       setSnackbarMessage("Invalid email address");
       setSnackbarType("error");
@@ -37,80 +70,155 @@ const Login: React.FC = () => {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      const errorMessage = err.message;
-      setSnackbarMessage(errorMessage);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const allowed = await isEmailAllowed(userCredential.user.email || "");
+
+      if (!allowed) {
+        await signOut(auth);
+        setSnackbarMessage(
+          "This email is not allowed to access this dashboard.",
+        );
+        setSnackbarType("error");
+        setOpenSnackbar(true);
+      }
+    } catch (error: any) {
+      setSnackbarMessage(error.message || "Failed to login.");
       setSnackbarType("error");
       setOpenSnackbar(true);
+    } finally {
       setIsEmailLoading(false);
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const allowed = await isEmailAllowed(userCredential.user.email || "");
+
+      if (!allowed) {
+        await signOut(auth);
+        setSnackbarMessage(
+          "This Google account is not allowed to access this dashboard.",
+        );
+        setSnackbarType("error");
+        setOpenSnackbar(true);
+      }
+    } catch (error: any) {
+      setSnackbarMessage(error.message || "Google login failed.");
+      setSnackbarType("error");
+      setOpenSnackbar(true);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (user && isAdmin) {
+    if (user) {
       window.location.href = "/dashboard";
     }
-
-    if (user && !isAdmin) {
-      signOut(auth) // Log out the user
-        .then(() => {
-          setSnackbarMessage("You are not an admin.");
-          setSnackbarType("error");
-          setOpenSnackbar(true);
-          setIsEmailLoading(false); // Stop loading after the error message is displayed
-        })
-        .catch((error) => {
-          setSnackbarMessage("Error signing out.");
-          setSnackbarType("error");
-          setOpenSnackbar(true);
-          setIsEmailLoading(false);
-        });
-    }
-  }, [user, isAdmin]);
+  }, [user]);
 
   return (
     <LoginContainer>
-      <LoginCard>
-        <Form onSubmit={handleEmailLogin}>
-          <Title>Login</Title>
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-          <PasswordContainer>
-            <Input
-              type={showPassword ? "text" : "password"} // Toggle between password and text
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+      <Shell>
+        <BrandPanel>
+          <Tag>Telecom Operations</Tag>
+          <BrandTitle>Revenue Intelligence Dashboard</BrandTitle>
+          <BrandSubtext>
+            Track sales, customers, products, and profitability with a single
+            clean workflow.
+          </BrandSubtext>
+        </BrandPanel>
+
+        <LoginCard>
+          <Form onSubmit={handleEmailLogin}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Welcome Back
+            </Typography>
+            <Typography
+              sx={{ mb: 2.2, color: "text.secondary", fontSize: "0.95rem" }}
+            >
+              Login with an approved company email.
+            </Typography>
+
+            <TextField
+              type="email"
+              label="Email Address"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
+              autoFocus
+              fullWidth
+              size="small"
+              sx={fieldSx}
             />
-            <PasswordIcon onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? <VisibilityOff /> : <Visibility />}
-            </PasswordIcon>
-          </PasswordContainer>
-          <Button type="submit" disabled={isEmailLoading || authLoading}>
-            {isEmailLoading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              "Login"
-            )}
-          </Button>
-        </Form>
-      </LoginCard>
+
+            <PasswordContainer>
+              <TextField
+                type={showPassword ? "text" : "password"}
+                label="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                fullWidth
+                size="small"
+                sx={fieldSx}
+              />
+              <PasswordIcon
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label="Toggle password visibility"
+              >
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+              </PasswordIcon>
+            </PasswordContainer>
+
+            <Button
+              type="submit"
+              disabled={isEmailLoading || isGoogleLoading || authLoading}
+            >
+              {isEmailLoading ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Log In"
+              )}
+            </Button>
+
+            <DividerText>
+              <span>or</span>
+            </DividerText>
+
+            <GoogleButton
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoading || isEmailLoading || authLoading}
+            >
+              {isGoogleLoading ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <>
+                  <GoogleIcon fontSize="small" />
+                  Continue with Google
+                </>
+              )}
+            </GoogleButton>
+          </Form>
+        </LoginCard>
+      </Shell>
 
       <Snackbar
         open={openSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={3200}
         onClose={() => setOpenSnackbar(false)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }} // Positioning at the top
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         TransitionComponent={(props) => (
-          <Slide {...props} direction="down" timeout={500} />
+          <Slide {...props} direction="down" timeout={400} />
         )}
       >
         <Alert onClose={() => setOpenSnackbar(false)} severity={snackbarType}>
@@ -121,92 +229,175 @@ const Login: React.FC = () => {
   );
 };
 
+const fieldSx = {
+  mb: 1.4,
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+};
+
 export default Login;
 
 const LoginContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  background-color: ${({ theme }) => theme.background};
-  padding-top: 50px;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+`;
+
+const Shell = styled.div`
+  width: min(980px, 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid ${({ theme }) => theme.borderColor};
+  box-shadow: 0 20px 45px ${({ theme }) => theme.shadow};
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  background: ${({ theme }) => theme.cardBackground};
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BrandPanel = styled.section`
+  padding: 36px 30px;
+  background: linear-gradient(
+    140deg,
+    ${({ theme }) => theme.primary} 0%,
+    ${({ theme }) => theme.accent} 100%
+  );
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  @media (max-width: 860px) {
+    min-height: 180px;
+  }
+`;
+
+const Tag = styled.span`
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.86;
+`;
+
+const BrandTitle = styled.h2`
+  margin-top: 12px;
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  line-height: 1.2;
+`;
+
+const BrandSubtext = styled.p`
+  margin-top: 12px;
+  opacity: 0.9;
+  max-width: 34ch;
 `;
 
 const LoginCard = styled.div`
-  background: ${({ theme }) => theme.cardBackground};
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  width: 100%;
-  max-width: 400px;
-  box-sizing: border-box;
+  padding: 34px 28px;
+  background: ${({ theme }) => theme.backgroundElevated};
 `;
 
 const Form = styled.form`
-  margin-bottom: 1.5rem;
-`;
-
-const Title = styled.h1`
-  margin-bottom: 1.5rem;
-  color: ${({ theme }) => theme.text};
-  font-size: 1.8rem;
-  font-weight: bold;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  border: 1px solid ${({ theme }) => theme.accent};
-  border-radius: 4px;
-  font-size: 1rem;
-  color: ${({ theme }) => theme.inputText};
-  background-color: ${({ theme }) => theme.inputBackground};
-  transition: border 0.3s ease;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.hoverAccent};
-  }
-  &:focus-visible {
-    border-color: ${({ theme }) => theme.hoverAccent};
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.placeholderColor};
-  }
+  max-width: 390px;
+  margin: 0 auto;
 `;
 
 const PasswordContainer = styled.div`
   position: relative;
-  width: 100%;
 `;
 
-const PasswordIcon = styled.div`
+const PasswordIcon = styled.button`
   position: absolute;
-  right: 10px;
-  top: 40%;
+  right: 12px;
+  top: 46%;
   transform: translateY(-50%);
+  border: none;
+  background: transparent;
   cursor: pointer;
-  color: ${({ theme }) => theme.inputText};
-  z-index: 2;
+  color: ${({ theme }) => theme.textMuted};
+  display: grid;
+  place-items: center;
 `;
 
 const Button = styled.button`
   width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
+  margin-top: 6px;
+  padding: 0.72rem;
+  font-size: 0.98rem;
+  font-weight: 700;
   color: white;
-  background-color: ${({ theme }) => theme.accent};
+  background: ${({ theme }) => theme.primary};
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: ${({ theme }) => theme.hoverAccent};
+    background-color: ${({ theme }) => theme.primaryHover};
   }
 
   &:disabled {
     cursor: not-allowed;
+    background-color: ${({ theme }) => theme.disabled};
+  }
+`;
+
+const DividerText = styled.div`
+  margin: 14px 0 10px;
+  text-align: center;
+  position: relative;
+  color: ${({ theme }) => theme.textMuted};
+  font-size: 0.86rem;
+
+  span {
+    background: ${({ theme }) => theme.backgroundElevated};
+    padding: 0 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px solid ${({ theme }) => theme.borderColor};
+  }
+`;
+
+const GoogleButton = styled.button`
+  width: 100%;
+  height: 42px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.text};
+  background: ${({ theme }) => theme.inputBackground};
+  border: 1px solid ${({ theme }) => theme.borderColor};
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.hoverBackground};
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+    transform: none;
   }
 `;

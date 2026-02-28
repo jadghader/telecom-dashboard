@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAllowlistedUser() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/auth_whitelist/config)
+        && request.auth.token.email in get(/databases/$(database)/documents/auth_whitelist/config).data.allowedEmails;
+    }
+
+    match /auth_whitelist/config {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /settings/system {
+      allow read: if isAllowlistedUser();
+      allow write: if isAllowlistedUser();
+    }
+
+    match /catalog_providers/{providerId} {
+      allow read: if isAllowlistedUser();
+      allow write: if isAllowlistedUser();
+    }
+
+    match /catalog_categories/{categoryId} {
+      allow read: if isAllowlistedUser();
+      allow write: if isAllowlistedUser();
+    }
+
+    match /catalog_products/{productId} {
+      allow read: if isAllowlistedUser();
+      allow write: if isAllowlistedUser();
+    }
+
+    match /customers/{customerId} {
+      allow read: if isAllowlistedUser();
+      allow write: if isAllowlistedUser();
+
+      match /months/{monthId} {
+        allow read: if isAllowlistedUser();
+        allow write: if isAllowlistedUser();
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

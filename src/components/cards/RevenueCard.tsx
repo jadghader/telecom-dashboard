@@ -9,7 +9,6 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 interface Transaction {
   revenue: number;
-  currency: "USD" | "LBP";
 }
 
 interface RevenueSummaryProps {
@@ -28,8 +27,9 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
 
   // Calculate total revenue
   const totalRevenue = transactions.reduce((sum, transaction) => {
+    const safeRate = exchangeRate > 0 ? exchangeRate : 1;
     if (currency === "USD") {
-      return sum + transaction.revenue / exchangeRate;
+      return sum + transaction.revenue / safeRate;
     }
     return sum + transaction.revenue;
   }, 0);
@@ -58,18 +58,19 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
   return (
     <Card
       sx={{
-        borderRadius: 3,
-        boxShadow: `0px 4px 6px ${theme.shadow}`,
-        background: theme.cardBackground,
-        transition: "transform 0.3s, box-shadow 0.3s",
+        borderRadius: "16px",
+        border: `1px solid ${theme.borderColor}`,
+        boxShadow: `0px 10px 24px ${theme.shadow}`,
+        background: `linear-gradient(160deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
+        transition: "transform 0.25s ease, box-shadow 0.25s ease",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         height: "100%",
-        padding: 3,
+        padding: 2.5,
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: `0px 8px 16px ${theme.shadow}`,
+          transform: "translateY(-3px)",
+          boxShadow: `0px 14px 30px ${theme.shadow}`,
         },
       }}
     >
@@ -82,14 +83,14 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
       >
         {/* Title with Icon */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <MonetizationOnIcon sx={{ color: theme.text, fontSize: 32 }} />
+          <MonetizationOnIcon sx={{ color: theme.primary, fontSize: 34 }} />
           <Typography
             variant="subtitle1"
             sx={{
-              color: theme.text,
+              color: theme.textMuted,
               fontWeight: 600,
               textTransform: "uppercase",
-              letterSpacing: 1,
+              letterSpacing: 1.1,
             }}
           >
             Total Revenue
@@ -107,7 +108,7 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
             sx={{
               color: theme.text,
               fontWeight: 700,
-              marginTop: 1,
+              marginTop: 0.5,
             }}
           >
             {currency === "USD"
@@ -121,7 +122,7 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
           variant="body2"
           sx={{
             color: theme.text,
-            marginTop: 2,
+            marginTop: 1.6,
           }}
         >
           Displayed in {currency}

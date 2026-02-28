@@ -1,38 +1,51 @@
-// src/styles/theme.ts
 export const lightTheme = {
-  background: "#F9FAFB", // Slightly off-white for a softer look
-  inputBackground: "#FFFFFF",
-  text: "#212529",
-  success: "#4CAF50",
-  accent: "#3B82F6", // A vibrant blue for highlights
-  hoverAccent: "#2563EB", // Darker blue for hover effects
-  primary: "#1D4ED8", // Stronger primary color
-  secondary: "#E5E7EB", // Light gray for contrast
-  cardBackground: "#FFFFFF", // Clean white for dashboard cards
-  inputText: "#374151",
-  disabled: "#9CA3AF", // Muted gray for disabled elements
-  borderColor: "#D1D5DB", // Subtle borders
-  shadow: "rgba(0, 0, 0, 0.08)",
-  editable: "#3B82F6", // Blue for editable elements
-  editableText: "#1D4ED8", // Darker blue for editable text (good contrast)
+  background: "#f4efe8",
+  backgroundElevated: "#fbf7f2",
+  backgroundLight: "#f7f1e7",
+  inputBackground: "#ffffff",
+  text: "#1f2937",
+  textMuted: "#6b7280",
+  success: "#15803d",
+  accent: "#3f6b5b",
+  hoverAccent: "#355a4c",
+  primary: "#244c5a",
+  primaryHover: "#1d3f4a",
+  secondary: "#f2ece3",
+  cardBackground: "#fffdfa",
+  inputText: "#1f2937",
+  placeholderColor: "#9ca3af",
+  disabled: "#9ca3af",
+  borderColor: "#d7d1c8",
+  border: "#d7d1c8",
+  shadow: "rgba(21, 34, 50, 0.12)",
+  hoverBackground: "#ece5da",
+  editable: "#3f6b5b",
+  editableText: "#244c5a",
 };
 
 export const darkTheme = {
-  background: "#111827", // Deep dark for a sleek UI
-  inputBackground: "#1F2937", // Darker gray for inputs
-  text: "#E5E7EB",
-  success: "#388E3C",
-  accent: "#60A5FA", // A softer blue accent
-  hoverAccent: "#3B82F6", // Stronger blue for hover
-  primary: "#2563EB",
-  secondary: "#1E293B", // Dark gray for subtle contrast
-  cardBackground: "#1F2937", // Matches input background
-  inputText: "#F9FAFB",
-  disabled: "#4B5563", // Slightly muted gray for disabled state
-  borderColor: "#374151", // Subtle dark border
-  shadow: "rgba(0, 0, 0, 0.4)", // Softer shadow for dark mode
-  editable: "#60A5FA", // Lighter blue for editable elements
-  editableText: "#2563EB", // Slightly lighter blue for editable text
+  background: "#11151d",
+  backgroundElevated: "#171d27",
+  backgroundLight: "#1b2430",
+  inputBackground: "#1f2937",
+  text: "#e5e7eb",
+  textMuted: "#9ca3af",
+  success: "#22c55e",
+  accent: "#7fb3a1",
+  hoverAccent: "#95c3b4",
+  primary: "#4f7f93",
+  primaryHover: "#6297ad",
+  secondary: "#233042",
+  cardBackground: "#1a2431",
+  inputText: "#f3f4f6",
+  placeholderColor: "#6b7280",
+  disabled: "#4b5563",
+  borderColor: "#374151",
+  border: "#374151",
+  shadow: "rgba(0, 0, 0, 0.45)",
+  hoverBackground: "#243245",
+  editable: "#7fb3a1",
+  editableText: "#a9d3c4",
 };
 
 export type ThemeType = typeof lightTheme;

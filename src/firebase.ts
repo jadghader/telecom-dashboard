@@ -1,6 +1,4 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp, FirebaseOptions } from "firebase/app";
 import {
   getAuth,
   setPersistence,
@@ -8,18 +6,27 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: "REDACTED_FIREBASE_API_KEY",
-  authDomain: "telecom-dashboard.firebaseapp.com",
-  projectId: "telecom-dashboard",
-  storageBucket: "telecom-dashboard.firebasestorage.app",
-  messagingSenderId: "958001589714",
-  appId: "1:958001589714:web:9648234467f0a5684c2c0b",
-  measurementId: "G-KC23WH3ZQD",
+const getFirebaseConfigFromEnv = (): FirebaseOptions => {
+  const encoded = process.env.REACT_APP_FIREBASE_CONFIG_B64;
+  if (!encoded) {
+    throw new Error(
+      "REACT_APP_FIREBASE_CONFIG_B64 environment variable is not set."
+    );
+  }
+  const decoded = atob(encoded);
+
+  try {
+    return JSON.parse(decoded) as FirebaseOptions;
+  } catch {
+    throw new Error(
+      "REACT_APP_FIREBASE_CONFIG_B64 must be a base64-encoded JSON Firebase config."
+    );
+  }
 };
 
+const firebaseConfig = getFirebaseConfigFromEnv();
+
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const auth = getAuth();
 setPersistence(auth, browserSessionPersistence)
   .then(() => {
@@ -31,4 +38,4 @@ setPersistence(auth, browserSessionPersistence)
 
 const db = getFirestore(app);
 
-export { app, auth, db, analytics };
+export { app, auth, db };

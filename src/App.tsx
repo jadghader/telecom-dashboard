@@ -20,7 +20,12 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
       <GlobalStyles />
-      <Router>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <AppContent isDarkMode={isDarkMode} />
       </Router>
     </ThemeProvider>
@@ -45,4 +50,3 @@ const AppContent: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
 };
 
 export default App;
-
