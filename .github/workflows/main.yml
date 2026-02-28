@@ -27,7 +27,7 @@ jobs:
       - name: Create .env.local with app secrets
         run: |
           cat > .env.local << EOF
-          REACT_APP_FIREBASE_CONFIG=${{ secrets.REACT_APP_FIREBASE_CONFIG_B64 }}
+          REACT_APP_FIREBASE_CONFIG_B64=${{ secrets.REACT_APP_FIREBASE_CONFIG_B64 }}
           EOF
 
       - name: Build Project
