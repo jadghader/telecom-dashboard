@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-      - release  # Ensure "release" branch is included
-  workflow_dispatch:  # ✅ Required for manual trigger
+      - release
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -19,21 +19,21 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          cache: 'npm' # Caches node_modules to speed up builds
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci # Ensures a clean, repeatable install
+        run: npm ci
 
-      - name: Create .env for build
-        env:
-          REACT_APP_FIREBASE_CONFIG_B64: ${{ secrets.REACT_APP_FIREBASE_CONFIG_B64 }}
+      - name: Create .env.local with app secrets
         run: |
-          cat > .env <<EOF
-          REACT_APP_FIREBASE_CONFIG_B64=$REACT_APP_FIREBASE_CONFIG_B64
+          cat > .env.local << EOF
+          REACT_APP_FIREBASE_CONFIG=${{ secrets.REACT_APP_FIREBASE_CONFIG_B64 }}
           EOF
 
       - name: Build Project
         run: npm run build
+        env:
+          CI: true
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
@@ -45,5 +45,5 @@ jobs:
           echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > $HOME/gcloud.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json" >> $GITHUB_ENV
 
-      - name: Deploy to Firebase
+      - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting,firestore:rules
