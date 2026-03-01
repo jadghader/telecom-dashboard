@@ -1,15 +1,8 @@
 {
-  "short_name": "Telecom App",
-  "name": "Create React App Sample",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ],
+  "short_name": "Telecom",
+  "name": "Telecom Dashboard",
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#111827",
   "background_color": "#ffffff"
 }

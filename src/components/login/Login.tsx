@@ -9,6 +9,8 @@ import { auth, db } from "../../firebase";
 import {
   Alert,
   CircularProgress,
+  IconButton,
+  InputAdornment,
   Slide,
   Snackbar,
   TextField,
@@ -159,25 +161,30 @@ const Login: React.FC = () => {
               sx={fieldSx}
             />
 
-            <PasswordContainer>
-              <TextField
-                type={showPassword ? "text" : "password"}
-                label="Password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                fullWidth
-                size="small"
-                sx={fieldSx}
-              />
-              <PasswordIcon
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label="Toggle password visibility"
-              >
-                {showPassword ? <VisibilityOff /> : <Visibility />}
-              </PasswordIcon>
-            </PasswordContainer>
+            <TextField
+              type={showPassword ? "text" : "password"}
+              label="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              fullWidth
+              size="small"
+              sx={fieldSx}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      aria-label="Toggle password visibility"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
             <Button
               type="submit"
@@ -306,23 +313,6 @@ const LoginCard = styled.div`
 const Form = styled.form`
   max-width: 390px;
   margin: 0 auto;
-`;
-
-const PasswordContainer = styled.div`
-  position: relative;
-`;
-
-const PasswordIcon = styled.button`
-  position: absolute;
-  right: 12px;
-  top: 46%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: ${({ theme }) => theme.textMuted};
-  display: grid;
-  place-items: center;
 `;
 
 const Button = styled.button`
