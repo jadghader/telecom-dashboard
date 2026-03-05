@@ -2,7 +2,7 @@ import { initializeApp, FirebaseOptions } from "firebase/app";
 import {
   getAuth,
   setPersistence,
-  browserSessionPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -27,10 +27,12 @@ const getFirebaseConfigFromEnv = (): FirebaseOptions => {
 const firebaseConfig = getFirebaseConfigFromEnv();
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth();
-setPersistence(auth, browserSessionPersistence)
+const auth = getAuth(app);
+
+// Keep users signed in across browser restarts.
+const authReady = setPersistence(auth, browserLocalPersistence)
   .then(() => {
-    console.log("Session persistence is now set to session-only.");
+    console.log("Auth persistence is set to local.");
   })
   .catch((error) => {
     console.error("Error setting persistence: ", error);
@@ -38,4 +40,4 @@ setPersistence(auth, browserSessionPersistence)
 
 const db = getFirestore(app);
 
-export { app, auth, db };
+export { app, auth, authReady, db };

@@ -1,6 +1,6 @@
 // src/firebase/auth.ts
 import { signInWithEmailAndPassword, signOut, User } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, authReady } from "../firebase";
 
 /**
  * Logs in a user using email and password.
@@ -14,6 +14,7 @@ export const loginWithEmail = async (
   password: string
 ): Promise<User> => {
   try {
+    await authReady;
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error: unknown) {
