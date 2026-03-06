@@ -15,16 +15,20 @@ import TransactionForm from "../transactions/TransactionForm";
 import TransactionList from "../transactions/TransactionList";
 import Header from "../header/Header";
 
-const DashboardContainer = styled.div<{ $isMobile: boolean }>`
-  padding: ${({ $isMobile }) => ($isMobile ? "16px" : "24px")};
+const PageWrapper = styled.div<{ $isMobile: boolean }>`
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: ${({ $isMobile }) => ($isMobile ? "8px 8px 16px" : "12px 12px 24px")};
+`;
+
+const DashboardContainer = styled.div`
   min-height: 100vh;
   background: transparent;
   color: ${({ theme }) => theme.text};
 `;
 
 const ContentWrapper = styled.div`
-  width: min(1280px, 100%);
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -196,9 +200,9 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
   }, [fetchTransactions, fetchExchangeRate]);
 
   return (
-    <>
+    <PageWrapper $isMobile={isMobile}>
       <Header isDarkMode={isDarkMode} />
-      <DashboardContainer $isMobile={isMobile}>
+      <DashboardContainer>
         <ContentWrapper>
           <SummaryAndFormContainer>
             <SummaryContainer>
@@ -254,7 +258,7 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
           />
         </ContentWrapper>
       </DashboardContainer>
-    </>
+    </PageWrapper>
   );
 };
 

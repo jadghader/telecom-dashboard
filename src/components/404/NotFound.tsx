@@ -10,7 +10,7 @@ const NotFoundPage: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       navigate("/"); // Redirects to home
-    }, 3000); // Adjust the delay (in milliseconds) as needed
+    }, 1500); // Adjust the delay (in milliseconds) as needed
 
     return () => clearTimeout(timer);
   }, [navigate]);

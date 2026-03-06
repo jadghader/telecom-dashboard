@@ -27,14 +27,12 @@ const OverlayLock = createGlobalStyle<{ overlayVisible: boolean }>`
 `;
 
 const HeaderContainer = styled.header`
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 14px 16px 14px 18px;
   border: 1px solid color-mix(in srgb, ${({ theme }) => theme.borderColor} 75%, #ffffff 25%);
   border-radius: 18px;

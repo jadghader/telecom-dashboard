@@ -139,11 +139,9 @@ const Login: React.FC = () => {
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
               Welcome Back
             </Typography>
-            <Typography
-              sx={{ mb: 2.2, color: "text.secondary", fontSize: "0.95rem" }}
-            >
+            <SubtitleText>
               Login with an approved company email.
-            </Typography>
+            </SubtitleText>
 
             <TextField
               type="email"
@@ -309,6 +307,12 @@ const LoginCard = styled.div`
 const Form = styled.form`
   max-width: 390px;
   margin: 0 auto;
+`;
+
+const SubtitleText = styled(Typography)`
+  margin-bottom: 2.2rem !important;
+  color: ${({ theme }) => theme.textMuted} !important;
+  font-size: 0.95rem !important;
 `;
 
 const Button = styled.button`

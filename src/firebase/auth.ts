@@ -2,13 +2,6 @@
 import { signInWithEmailAndPassword, signOut, User } from "firebase/auth";
 import { auth, authReady } from "../firebase";
 
-/**
- * Logs in a user using email and password.
- * @param email - User's email address
- * @param password - User's password
- * @returns The authenticated User object
- * @throws Error if login fails
- */
 export const loginWithEmail = async (
   email: string,
   password: string
@@ -23,11 +16,7 @@ export const loginWithEmail = async (
   }
 };
 
-/**
- * Logs out the currently authenticated user.
- * @returns Promise<void>
- * @throws Error if logout fails
- */
+
 export const logout = async (): Promise<void> => {
   try {
     await signOut(auth);
