@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   GoogleAuthProvider,
-  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
 } from "firebase/auth";
@@ -21,6 +20,7 @@ import styled from "styled-components";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { doc, getDoc } from "firebase/firestore";
+import { loginWithEmail } from "../../firebase/auth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -72,12 +72,8 @@ const Login: React.FC = () => {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-      const allowed = await isEmailAllowed(userCredential.user.email || "");
+      const user = await loginWithEmail(email, password);
+      const allowed = await isEmailAllowed(user.email || "");
 
       if (!allowed) {
         await signOut(auth);

@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth, db } from "../firebase";
+import { auth, authReady, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 interface AuthContextType {
   user: User | null;
@@ -41,33 +41,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser?.email) {
-        setUser(currentUser);
-        setIsLoading(false);
-        return;
-      }
+    let unsubscribe: (() => void) | undefined;
+    let isCancelled = false;
 
-      try {
-        const allowed = await isEmailAllowlisted(currentUser.email);
-        if (!allowed) {
-          await auth.signOut();
-          setUser(null);
+    const initAuthListener = async () => {
+      await authReady;
+      if (isCancelled) return;
+
+      unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        if (!currentUser?.email) {
+          setUser(currentUser);
           setIsLoading(false);
           return;
         }
-      } catch (error) {
-        console.error("Whitelist check failed:", error);
-        await auth.signOut();
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
 
-      setUser(currentUser);
+        try {
+          const allowed = await isEmailAllowlisted(currentUser.email);
+          if (!allowed) {
+            await auth.signOut();
+            setUser(null);
+            setIsLoading(false);
+            return;
+          }
+          setUser(currentUser);
+          setIsLoading(false);
+        } catch (error) {
+          // Temporary Firestore/network errors should not force-logout a valid session.
+          console.error("Whitelist check failed; keeping existing session:", error);
+          setUser(currentUser);
+          setIsLoading(false);
+        }
+      });
+    };
+
+    initAuthListener().catch((error) => {
+      console.error("Failed to initialize auth listener:", error);
       setIsLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      isCancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const logout = async () => {
