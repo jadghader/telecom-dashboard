@@ -81,10 +81,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
       <TableContainer
         component={Paper}
         sx={{
-          borderRadius: "14px",
-          border: `1px solid ${theme.borderColor}`,
-          boxShadow: `0px 12px 24px ${theme.shadow}`,
-          background: `linear-gradient(180deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
+          borderRadius: "16px",
+          border: `1px solid ${theme.borderColor}30`,
+          boxShadow: `0px 14px 32px ${theme.shadow}15`,
+          background: `linear-gradient(185deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
+          backdropFilter: "blur(8px)",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            boxShadow: `0px 18px 40px ${theme.shadow}20`,
+          },
         }}
       >
         <Table size="small">

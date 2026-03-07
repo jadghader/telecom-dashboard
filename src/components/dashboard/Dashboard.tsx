@@ -17,9 +17,11 @@ import Header from "../header/Header";
 
 const PageWrapper = styled.div<{ $isMobile: boolean }>`
   width: 100%;
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: ${({ $isMobile }) => ($isMobile ? "8px 8px 16px" : "12px 12px 24px")};
+  padding: ${({ $isMobile }) => ($isMobile ? "14px 14px 28px" : "20px 32px 40px")};
+  box-sizing: border-box;
+  position: relative;
 `;
 
 const DashboardContainer = styled.div`
@@ -31,13 +33,37 @@ const DashboardContainer = styled.div`
 const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  animation: fadeIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 const SummaryAndFormContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   @media (min-width: 900px) {
     flex-direction: row;
@@ -48,32 +74,65 @@ const SummaryAndFormContainer = styled.div`
 const SummaryContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   flex: 1;
 `;
 
 const FormContainer = styled.div`
   flex: 1.4;
+  animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 const SelectBlock = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid ${({ theme }) => theme.borderColor};
+  gap: 24px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  border: 1px solid ${({ theme }) => theme.borderColor}30;
   background: linear-gradient(
-    130deg,
+    135deg,
     ${({ theme }) => theme.cardBackground} 0%,
     ${({ theme }) => theme.backgroundLight} 100%
   );
-  box-shadow: 0 10px 24px ${({ theme }) => theme.shadow};
+  box-shadow: 0 14px 32px ${({ theme }) => theme.shadow}15;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+  animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  &:hover {
+    box-shadow: 0 18px 40px ${({ theme }) => theme.shadow}20;
+    transform: translateY(-2px);
+  }
 
   @media (max-width: 700px) {
     flex-direction: column;
     align-items: stretch;
+    gap: 16px;
+    padding: 18px 20px;
   }
 `;
 
@@ -111,7 +170,7 @@ const computeTotals = (entries: any[]) =>
     { quantity: 0, totalCost: 0, totalSales: 0, totalProfit: 0 }
   );
 
-const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
+const Dashboard: React.FC = () => {
   const isMobile = useMediaQuery("(max-width: 600px)");
   const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
@@ -201,7 +260,7 @@ const Dashboard: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
 
   return (
     <PageWrapper $isMobile={isMobile}>
-      <Header isDarkMode={isDarkMode} />
+      <Header />
       <DashboardContainer>
         <ContentWrapper>
           <SummaryAndFormContainer>

@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { lightTheme, darkTheme } from "../styles/theme"; // Import your themes
 
 const useThemeDetect = () => {
-  const [theme, setTheme] = useState(lightTheme); // Default theme to lightTheme
-  const [isDarkMode, setIsDarkMode] = useState(false); // Track dark mode status
+  const [theme, setTheme] = useState(lightTheme);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check for saved theme in session storage or system preference
-    const savedTheme = sessionStorage.getItem("theme");
+    // Check for saved theme in localStorage
+    const savedTheme = localStorage.getItem("theme");
 
     if (savedTheme) {
       // If a saved theme exists, use it
@@ -21,7 +21,7 @@ const useThemeDetect = () => {
       const themeToSet = systemTheme === "dark" ? darkTheme : lightTheme;
       setTheme(themeToSet);
       setIsDarkMode(systemTheme === "dark");
-      sessionStorage.setItem("theme", systemTheme); // Save to sessionStorage
+      localStorage.setItem("theme", systemTheme);
     }
 
     // Function to handle system theme changes dynamically
@@ -30,7 +30,7 @@ const useThemeDetect = () => {
       const themeToSet = newTheme === "dark" ? darkTheme : lightTheme;
       setTheme(themeToSet);
       setIsDarkMode(newTheme === "dark");
-      sessionStorage.setItem("theme", newTheme); // Save the new theme to sessionStorage
+      localStorage.setItem("theme", newTheme);
     };
 
     // Listen for system theme changes
@@ -43,7 +43,17 @@ const useThemeDetect = () => {
     };
   }, []);
 
-  return { theme, isDarkMode }; // Return both theme and isDarkMode
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => {
+      const newMode = !prev;
+      const themeToSet = newMode ? darkTheme : lightTheme;
+      setTheme(themeToSet);
+      localStorage.setItem("theme", newMode ? "dark" : "light");
+      return newMode;
+    });
+  };
+
+  return { theme, isDarkMode, toggleTheme };
 };
 
 export default useThemeDetect;

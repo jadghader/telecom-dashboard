@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -33,7 +33,7 @@ const Login: React.FC = () => {
   const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
 
   const isValidEmail = (emailValue: string): boolean => {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -116,11 +116,7 @@ const Login: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      window.location.href = "/dashboard";
-    }
-  }, [user]);
+
 
   return (
     <LoginContainer>
@@ -231,10 +227,20 @@ const Login: React.FC = () => {
 };
 
 const fieldSx = {
-  mb: 1.4,
+  mb: 1.8,
   "& .MuiOutlinedInput-root": {
-    borderRadius: "10px",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: "12px",
+    backgroundColor: "rgba(255,255,255,0.7)",
+    transition: "all 0.3s ease",
+    "&:hover": {
+      backgroundColor: "rgba(255,255,255,0.85)",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "rgba(255,255,255,0.95)",
+    },
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "currentColor",
   },
 };
 
@@ -245,17 +251,37 @@ const LoginContainer = styled.div`
   display: grid;
   place-items: center;
   padding: 22px;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.background} 0%,
+    ${({ theme }) => theme.backgroundLight} 100%
+  );
 `;
 
 const Shell = styled.div`
-  width: min(980px, 100%);
-  border-radius: 18px;
+  width: min(1020px, 100%);
+  border-radius: 24px;
   overflow: hidden;
-  border: 1px solid ${({ theme }) => theme.borderColor};
-  box-shadow: 0 20px 45px ${({ theme }) => theme.shadow};
+  border: 1px solid ${({ theme }) =>
+    theme.borderColor}30;
+  box-shadow: 0 32px 64px ${({ theme }) =>
+    theme.shadow}25;
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: 1.1fr 1fr;
   background: ${({ theme }) => theme.cardBackground};
+  backdrop-filter: blur(10px);
+  animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   @media (max-width: 860px) {
     grid-template-columns: 1fr;
@@ -263,91 +289,156 @@ const Shell = styled.div`
 `;
 
 const BrandPanel = styled.section`
-  padding: 36px 30px;
+  padding: 48px 40px;
   background: linear-gradient(
-    140deg,
-    ${({ theme }) => theme.primary} 0%,
-    ${({ theme }) => theme.accent} 100%
+    135deg,
+    #667eea 0%,
+    #764ba2 50%,
+    #f093fb 100%
   );
   color: #fff;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: drift 20s linear infinite;
+  }
+
+  @keyframes drift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(50px, 50px); }
+  }
 
   @media (max-width: 860px) {
-    min-height: 180px;
+    min-height: 220px;
+    padding: 36px 30px;
   }
 `;
 
 const Tag = styled.span`
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.86;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 `;
 
 const BrandTitle = styled.h2`
-  margin-top: 12px;
-  font-size: clamp(1.5rem, 2.2vw, 2rem);
-  line-height: 1.2;
+  margin-top: 18px;
+  font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+  line-height: 1.25;
+  font-weight: 800;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 `;
 
 const BrandSubtext = styled.p`
-  margin-top: 12px;
-  opacity: 0.9;
-  max-width: 34ch;
+  margin-top: 16px;
+  opacity: 0.95;
+  max-width: 35ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
 `;
 
 const LoginCard = styled.div`
-  padding: 34px 28px;
+  padding: 48px 36px;
   background: ${({ theme }) => theme.backgroundElevated};
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  @media (max-width: 600px) {
+    padding: 36px 24px;
+  }
 `;
 
 const Form = styled.form`
-  max-width: 390px;
+  max-width: 360px;
   margin: 0 auto;
 `;
 
 const SubtitleText = styled(Typography)`
-  margin-bottom: 2.2rem !important;
+  margin-bottom: 2.8rem !important;
   color: ${({ theme }) => theme.textMuted} !important;
   font-size: 0.95rem !important;
+  line-height: 1.5 !important;
 `;
 
 const Button = styled.button`
   width: 100%;
-  margin-top: 6px;
-  padding: 0.72rem;
+  margin-top: 8px;
+  padding: 14px;
   font-size: 0.98rem;
   font-weight: 700;
   color: white;
-  background: ${({ theme }) => theme.primary};
+  background: linear-gradient(135deg, ${({ theme }) => theme.primary} 0%, ${({ theme }) => theme.accent} 100%);
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 28px ${({ theme }) => `${theme.shadow}30`};
 
-  &:hover {
-    background-color: ${({ theme }) => theme.primaryHover};
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px ${({ theme }) => `${theme.shadow}40`};
+    
+    &::before {
+      left: 100%;
+    }
   }
 
   &:disabled {
     cursor: not-allowed;
-    background-color: ${({ theme }) => theme.disabled};
+    opacity: 0.6;
+    transform: none;
   }
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 `;
 
 const DividerText = styled.div`
-  margin: 14px 0 10px;
+  margin: 20px 0 16px;
   text-align: center;
   position: relative;
   color: ${({ theme }) => theme.textMuted};
-  font-size: 0.86rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 
   span {
     background: ${({ theme }) => theme.backgroundElevated};
-    padding: 0 10px;
+    padding: 0 12px;
     position: relative;
     z-index: 1;
   }
@@ -358,36 +449,64 @@ const DividerText = styled.div`
     left: 0;
     right: 0;
     top: 50%;
-    border-top: 1px solid ${({ theme }) => theme.borderColor};
+    border-top: 1px solid ${({ theme }) =>
+    theme.borderColor}40;
   }
 `;
 
 const GoogleButton = styled.button`
   width: 100%;
-  height: 42px;
+  height: 48px;
   font-size: 0.95rem;
   font-weight: 700;
   color: ${({ theme }) => theme.text};
-  background: ${({ theme }) => theme.inputBackground};
-  border: 1px solid ${({ theme }) => theme.borderColor};
-  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.inputBackground} 0%,
+    ${({ theme }) => theme.backgroundLight} 100%
+  );
+  border: 1.5px solid ${({ theme }) =>
+  theme.borderColor}60;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  gap: 10px;
+  transition: all 0.3s ease;
+  position: relative;
 
-  &:hover {
-    background-color: ${({ theme }) => theme.hoverBackground};
-    transform: translateY(-1px);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1.5px;
+    background: linear-gradient(135deg, ${({ theme }) => theme.primary}, ${({ theme }) => theme.accent});
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px ${({ theme }) =>
+    theme.shadow}15;
+
+    &::before {
+      opacity: 1;
+    }
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.75;
+    opacity: 0.6;
     transform: none;
+  }
+
+  svg {
+    font-size: 1.1rem;
   }
 `;

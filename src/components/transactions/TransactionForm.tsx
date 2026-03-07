@@ -114,25 +114,90 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
   const [categories, setCategories] = useState<string[]>([]);
   const [items, setItems] = useState<ItemDoc[]>([]);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
-  const fieldSx = {
+
+  const fieldSx = useMemo(() => ({
     "& .MuiOutlinedInput-root": {
       backgroundColor: theme.inputBackground,
-      borderRadius: "10px",
+      borderRadius: "12px",
       color: theme.inputText,
+      transition: "all 0.3s ease",
       "& fieldset": {
         borderColor: theme.borderColor,
+        borderWidth: "1.5px",
       },
       "&:hover fieldset": {
         borderColor: theme.primary,
+        borderWidth: "1.5px",
       },
-      "&.Mui-focused fieldset": {
-        borderColor: theme.primary,
+      "&.Mui-focused": {
+        backgroundColor: theme.cardBackground,
+        "& fieldset": {
+          borderColor: theme.primary,
+          borderWidth: "2px",
+          boxShadow: `0 0 0 3px rgba(102, 126, 234, 0.1)`,
+        },
       },
     },
     "& .MuiInputLabel-root": {
       color: theme.textMuted,
+      fontSize: "0.9rem",
+      transition: "all 0.3s ease",
+      "&.Mui-focused": {
+        color: theme.primary,
+        fontWeight: 600,
+      },
     },
-  };
+    "& .MuiInputBase-input": {
+      color: theme.inputText,
+      fontSize: "0.95rem",
+      fontWeight: 500,
+      "&::placeholder": {
+        color: theme.placeholderColor,
+        opacity: 0.7,
+      },
+    },
+    "& .MuiSelect-icon": {
+      color: theme.primary,
+    },
+  }), [theme]);
+
+  const selectSx = useMemo(() => ({
+    ...fieldSx,
+    "& .MuiPaper-root": {
+      backgroundColor: theme.cardBackground,
+      color: theme.text,
+    },
+    "& .MuiMenuItem-root": {
+      color: theme.text,
+      backgroundColor: theme.cardBackground,
+      "&:hover": {
+        backgroundColor: theme.hoverBackground,
+      },
+      "&.Mui-selected": {
+        backgroundColor: theme.primary,
+        color: "#fff",
+        "&:hover": {
+          backgroundColor: theme.primary,
+        },
+      },
+    },
+  }), [fieldSx, theme]);
+
+  const profitBoxSx = useMemo(() => ({
+    color: theme.text,
+    marginTop: 1.4,
+    fontWeight: 700,
+    background: `linear-gradient(135deg, ${theme.primary}15 0%, ${theme.accent}15 100%)`,
+    border: `2px solid ${theme.primary}40`,
+    borderRadius: "12px",
+    padding: "14px 16px",
+    transition: "all 0.3s ease",
+    fontSize: "0.95rem",
+    "&:hover": {
+      borderColor: theme.primary,
+      background: `linear-gradient(135deg, ${theme.primary}25 0%, ${theme.accent}25 100%)`,
+    },
+  }), [theme]);
 
   const totalProfitLbp = useMemo(
     () => (sellPrice - sourcePrice) * Number(quantity || 0),
@@ -435,12 +500,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
   return (
     <Box
       sx={{
-        padding: isMobile ? "1rem" : "1.3rem",
+        padding: isMobile ? "1.2rem 1rem" : "1.6rem 1.4rem",
         background: `linear-gradient(145deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
-        border: `1px solid ${theme.borderColor}`,
+        border: `1px solid ${theme.borderColor}30`,
         borderRadius: "16px",
-        boxShadow: `0px 12px 26px ${theme.shadow}`,
+        boxShadow: `0px 14px 32px ${theme.shadow}15`,
+        backdropFilter: "blur(8px)",
         height: "100%",
+        transition: "all 0.3s ease",
       }}
     >
       <Snackbar
@@ -489,7 +556,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
           )}
         />
 
-        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+        <FormControl fullWidth size="small" required margin="normal" sx={selectSx}>
           <InputLabel>Provider</InputLabel>
           <Select
             value={selectedProvider}
@@ -504,7 +571,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
           </Select>
         </FormControl>
 
-        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+        <FormControl fullWidth size="small" required margin="normal" sx={selectSx}>
           <InputLabel>Category</InputLabel>
           <Select
             value={selectedCategory}
@@ -519,7 +586,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
           </Select>
         </FormControl>
 
-        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+        <FormControl fullWidth size="small" required margin="normal" sx={selectSx}>
           <InputLabel>Product</InputLabel>
           <Select
             value={selectedItem}
@@ -583,7 +650,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
           sx={fieldSx}
         />
 
-        <FormControl fullWidth size="small" required margin="normal" sx={fieldSx}>
+        <FormControl fullWidth size="small" required margin="normal" sx={selectSx}>
           <InputLabel>Price Type</InputLabel>
           <Select
             value={priceType}
@@ -642,15 +709,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
         </Box>
 
         <Typography
-          sx={{
-            color: theme.primary,
-            marginTop: 1.2,
-            fontWeight: 700,
-            background: theme.secondary,
-            border: `1px solid ${theme.borderColor}`,
-            borderRadius: "10px",
-            padding: "10px 12px",
-          }}
+          sx={profitBoxSx}
         >
           Estimated Profit: {totalProfitLbp.toFixed(0)} LBP ({totalProfitUsd.toFixed(2)} USD)
         </Typography>
@@ -659,11 +718,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ fetchTransactions }) 
           onClick={(e) => handleSubmit(e)}
           disabled={isAdding || !isFormValid()}
           size="large"
-          padding="12px"
-          fontSize="1rem"
-          borderRadius="8px"
+          padding="13px"
+          fontSize="0.95rem"
+          borderRadius="12px"
           width="100%"
-          margin="12px 0 0 0"
+          margin="16px 0 0 0"
         >
           {isAdding ? "Saving..." : "Save Sale"}
         </Button>

@@ -31,11 +31,11 @@ const HeaderContainer = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 14px 16px 14px 18px;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
   border: 1px solid color-mix(in srgb, ${({ theme }) => theme.borderColor} 75%, #ffffff 25%);
-  border-radius: 18px;
+  border-radius: 16px;
   background: linear-gradient(
     122deg,
     ${({ theme }) => theme.backgroundElevated} 0%,
@@ -44,10 +44,11 @@ const HeaderContainer = styled.header`
   );
   box-shadow: 0 14px 30px ${({ theme }) => theme.shadow};
   backdrop-filter: blur(12px);
+  box-sizing: border-box;
 
-  @media (max-width: 620px) {
+  @media (max-width: 768px) {
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: space-between;
   }
 `;
 
@@ -74,7 +75,9 @@ const Title = styled.h1`
 const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 `;
 
 const SettingsButton = styled.button`
@@ -315,10 +318,10 @@ const SecondaryButton = styled(Button)`
 `;
 
 const DangerButton = styled(Button)`
-  background: #b42318;
+  background: ${({ theme }) => theme.danger};
 
   &:hover {
-    background: #912018;
+    background: ${({ theme }) => theme.dangerHover};
   }
 `;
 
@@ -329,7 +332,7 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const Header: React.FC<{ isDarkMode: boolean }> = () => {
+const Header: React.FC = () => {
   const db = getFirestore();
   const { logout } = useAuth();
   const [showSettings, setShowSettings] = useState(false);

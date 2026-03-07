@@ -20,10 +20,15 @@ const GlobalStyles = createGlobalStyle`
     overflow-x: hidden;
     width: 100%;
     color: ${({ theme }) => theme.text};
-    background:
-      radial-gradient(circle at 12% 18%, rgba(63, 107, 91, 0.16), transparent 38%),
-      radial-gradient(circle at 88% 10%, rgba(36, 76, 90, 0.16), transparent 36%),
-      ${({ theme }) => theme.background};
+    background: linear-gradient(
+      135deg,
+      ${({ theme }) => theme.background} 0%,
+      ${({ theme }) => theme.backgroundLight} 50%,
+      ${({ theme }) => theme.background} 100%
+    ),
+    radial-gradient(circle at 12% 18%, rgba(63, 107, 91, 0.1), transparent 38%),
+    radial-gradient(circle at 88% 10%, rgba(36, 76, 90, 0.1), transparent 36%);
+    background-attachment: fixed;
     line-height: 1.45;
   }
 
@@ -33,7 +38,7 @@ const GlobalStyles = createGlobalStyle`
   }
 
   ::selection {
-    background: ${({ theme }) => theme.primary};
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
   }
 `;

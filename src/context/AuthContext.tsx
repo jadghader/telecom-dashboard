@@ -45,39 +45,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let isCancelled = false;
 
     const initAuthListener = async () => {
-      await authReady;
-      if (isCancelled) return;
+      try {
+        // Wait for Firebase persistence to be ready
+        await authReady;
+        if (isCancelled) return;
 
-      unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-        if (!currentUser?.email) {
-          setUser(currentUser);
-          setIsLoading(false);
-          return;
-        }
-
-        try {
-          const allowed = await isEmailAllowlisted(currentUser.email);
-          if (!allowed) {
-            await auth.signOut();
-            setUser(null);
+        // Set up the auth state listener
+        unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          if (!currentUser?.email) {
+            setUser(currentUser);
             setIsLoading(false);
             return;
           }
-          setUser(currentUser);
-          setIsLoading(false);
-        } catch (error) {
-          // Temporary Firestore/network errors should not force-logout a valid session.
-          console.error("Whitelist check failed; keeping existing session:", error);
-          setUser(currentUser);
-          setIsLoading(false);
-        }
-      });
+
+          try {
+            const allowed = await isEmailAllowlisted(currentUser.email);
+            if (!allowed) {
+              await auth.signOut();
+              setUser(null);
+            } else {
+              setUser(currentUser);
+            }
+          } catch (error) {
+            // Temporary Firestore/network errors should not force-logout a valid session.
+            console.warn("Whitelist check failed; keeping existing session:", error);
+            setUser(currentUser);
+          } finally {
+            setIsLoading(false);
+          }
+        });
+      } catch (error) {
+        console.error("Failed to initialize auth listener:", error);
+        setIsLoading(false);
+      }
     };
 
-    initAuthListener().catch((error) => {
-      console.error("Failed to initialize auth listener:", error);
-      setIsLoading(false);
-    });
+    // Initialize the auth listener
+    initAuthListener();
 
     return () => {
       isCancelled = true;

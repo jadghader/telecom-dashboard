@@ -59,18 +59,28 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
     <Card
       sx={{
         borderRadius: "16px",
-        border: `1px solid ${theme.borderColor}`,
-        boxShadow: `0px 10px 24px ${theme.shadow}`,
-        background: `linear-gradient(160deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
-        transition: "transform 0.25s ease, box-shadow 0.25s ease",
+        border: `1px solid ${theme.borderColor}30`,
+        boxShadow: `0px 14px 32px ${theme.shadow}15`,
+        background: `linear-gradient(135deg, ${theme.cardBackground} 0%, ${theme.backgroundLight} 100%)`,
+        backdropFilter: "blur(8px)",
+        transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         height: "100%",
-        padding: 2.5,
+        padding: 3,
+        position: "relative",
+        overflow: "hidden",
+        "&::before": {
+          content: "''",
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.05), transparent 50%)",
+          pointerEvents: "none",
+        },
         "&:hover": {
-          transform: "translateY(-3px)",
-          boxShadow: `0px 14px 30px ${theme.shadow}`,
+          transform: "translateY(-6px) scale(1.02)",
+          boxShadow: `0px 20px 48px ${theme.shadow}25`,
         },
       }}
     >
@@ -79,18 +89,21 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         {/* Title with Icon */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <MonetizationOnIcon sx={{ color: theme.primary, fontSize: 34 }} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+          <MonetizationOnIcon sx={{ color: theme.primary, fontSize: 36 }} />
           <Typography
             variant="subtitle1"
             sx={{
               color: theme.textMuted,
-              fontWeight: 600,
+              fontWeight: 700,
               textTransform: "uppercase",
-              letterSpacing: 1.1,
+              letterSpacing: 1.2,
+              fontSize: "0.8rem",
             }}
           >
             Total Revenue
@@ -107,8 +120,9 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
             variant="h4"
             sx={{
               color: theme.text,
-              fontWeight: 700,
-              marginTop: 0.5,
+              fontWeight: 800,
+              marginTop: 1.2,
+              fontSize: "clamp(1.5rem, 2vw, 2rem)",
             }}
           >
             {currency === "USD"
@@ -121,8 +135,10 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({
         <Typography
           variant="body2"
           sx={{
-            color: theme.text,
-            marginTop: 1.6,
+            color: theme.textMuted,
+            marginTop: 1.8,
+            fontSize: "0.9rem",
+            fontWeight: 500,
           }}
         >
           Displayed in {currency}
